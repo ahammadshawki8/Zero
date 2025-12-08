@@ -1,0 +1,8 @@
+{
+  "name": "Zero - Smart Waste Management",
+  "description": "A comprehensive smart city waste management platform connecting citizens, cleaners, and administrators.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
