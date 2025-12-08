@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserRole } from '../types';
 import { Button, Input, Select, Card } from '../components/ui';
+import { Logo } from '../components/Logo';
 
 interface AuthProps {
   onLogin: (role: UserRole) => void;
@@ -22,9 +23,7 @@ export const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center mb-6">
-          <div className="h-16 w-16 bg-gradient-to-br from-green-500 to-green-700 rounded-2xl flex items-center justify-center text-white font-bold text-4xl shadow-green-200 shadow-xl">
-            Z
-          </div>
+          <Logo size="xl" showText={false} />
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900">
           Zero Waste Management

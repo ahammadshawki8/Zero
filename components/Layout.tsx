@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { UserRole } from '../types';
 import { 
   Menu, X, LayoutDashboard, FileText, ClipboardList, 
-  MapPin, Bell, LogOut, User, Settings, CheckCircle, BarChart3, Radio
+  MapPin, Bell, LogOut, Settings, CheckCircle, BarChart3, Radio
 } from 'lucide-react';
-import { Button } from './ui';
+import { Logo } from './Logo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -48,10 +48,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
       <header className="md:hidden bg-white border-b border-slate-200 p-4 flex items-center justify-between sticky top-0 z-30">
-        <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 bg-green-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">Z</div>
-          <span className="font-bold text-xl text-slate-800">Zero</span>
-        </div>
+        <Logo size="sm" />
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-slate-600">
           {isSidebarOpen ? <X /> : <Menu />}
         </button>
@@ -71,11 +68,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         <div className="p-6 flex items-center space-x-3 border-b border-slate-100">
-          <div className="h-10 w-10 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-green-200 shadow-lg">Z</div>
-          <div>
-            <h1 className="font-bold text-xl text-slate-900 leading-tight">Zero</h1>
-            <p className="text-xs text-slate-500 font-medium tracking-wide">SMART CITY</p>
-          </div>
+          <Logo size="md" />
         </div>
 
         <div className="px-6 py-4">

@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { UserRole } from './types';
 import { Layout } from './components/Layout';
 import { AuthPage } from './pages/Auth';
+import { LandingPage } from './pages/Landing';
 
 // Citizen Pages
 import { ReportWaste } from './pages/citizen/ReportWaste';
@@ -19,6 +20,7 @@ import { AdminReports } from './pages/admin/Reports';
 import { AdminAnalytics } from './pages/admin/Analytics';
 
 const App = () => {
+  const [showLanding, setShowLanding] = useState(true);
   const [user, setUser] = useState<{ role: UserRole; isAuthenticated: boolean }>({
     role: 'CITIZEN',
     isAuthenticated: false,
@@ -30,7 +32,12 @@ const App = () => {
 
   const handleLogout = () => {
     setUser({ role: 'CITIZEN', isAuthenticated: false });
+    setShowLanding(true);
   };
+
+  if (showLanding && !user.isAuthenticated) {
+    return <LandingPage onGetStarted={() => setShowLanding(false)} />;
+  }
 
   if (!user.isAuthenticated) {
     return <AuthPage onLogin={handleLogin} />;
