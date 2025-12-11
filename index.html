@@ -2,13 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="https://lucide.dev/logo.light.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Zero - Smart Cities Start From Zero</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
@@ -34,9 +36,78 @@
     </script>
     <style>
       body { font-family: 'Inter', sans-serif; }
+      
+      /* Dark mode global overrides for better contrast */
+      .dark .text-slate-900 { color: #f1f5f9 !important; }
+      .dark .text-slate-800 { color: #e2e8f0 !important; }
+      .dark .text-slate-700 { color: #cbd5e1 !important; }
+      .dark .text-slate-600 { color: #94a3b8 !important; }
+      .dark .text-slate-500 { color: #64748b !important; }
+      
+      .dark .bg-white { background-color: #1e293b !important; }
+      .dark .bg-slate-50 { background-color: #0f172a !important; }
+      .dark .bg-slate-100 { background-color: #1e293b !important; }
+      
+      .dark .border-slate-100 { border-color: #334155 !important; }
+      .dark .border-slate-200 { border-color: #334155 !important; }
+      .dark .border-slate-300 { border-color: #475569 !important; }
+      
+      .dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]) { border-color: #334155 !important; }
+      .dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #334155 !important; }
+      
+      .dark .hover\:bg-slate-50:hover { background-color: #334155 !important; }
+      .dark .hover\:bg-slate-100:hover { background-color: #334155 !important; }
+      
+      /* Dark mode for colored backgrounds */
+      .dark .bg-green-50 { background-color: rgba(34, 197, 94, 0.1) !important; }
+      .dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.1) !important; }
+      .dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.1) !important; }
+      .dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.1) !important; }
+      .dark .bg-purple-50 { background-color: rgba(168, 85, 247, 0.1) !important; }
+      .dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.1) !important; }
+      .dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.1) !important; }
+      .dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.1) !important; }
+      
+      /* Dark mode text colors for colored text */
+      .dark .text-green-800 { color: #86efac !important; }
+      .dark .text-green-700 { color: #4ade80 !important; }
+      .dark .text-green-600 { color: #22c55e !important; }
+      .dark .text-blue-800 { color: #93c5fd !important; }
+      .dark .text-blue-700 { color: #60a5fa !important; }
+      .dark .text-amber-800 { color: #fcd34d !important; }
+      .dark .text-amber-700 { color: #fbbf24 !important; }
+      .dark .text-amber-600 { color: #f59e0b !important; }
+      .dark .text-red-800 { color: #fca5a5 !important; }
+      .dark .text-red-700 { color: #f87171 !important; }
+      .dark .text-purple-800 { color: #d8b4fe !important; }
+      .dark .text-indigo-800 { color: #a5b4fc !important; }
+      .dark .text-emerald-800 { color: #6ee7b7 !important; }
+      
+      /* Dark mode borders for colored borders */
+      .dark .border-green-200 { border-color: rgba(34, 197, 94, 0.3) !important; }
+      .dark .border-blue-200 { border-color: rgba(59, 130, 246, 0.3) !important; }
+      .dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.3) !important; }
+      .dark .border-red-200 { border-color: rgba(239, 68, 68, 0.3) !important; }
+      .dark .border-purple-200 { border-color: rgba(168, 85, 247, 0.3) !important; }
+      .dark .border-indigo-200 { border-color: rgba(99, 102, 241, 0.3) !important; }
+      .dark .border-emerald-200 { border-color: rgba(16, 185, 129, 0.3) !important; }
+      
+      /* Table styles */
+      .dark table thead { background-color: #1e293b !important; }
+      .dark table tbody tr:hover { background-color: #334155 !important; }
+      
+      /* Form elements */
+      .dark input, .dark select, .dark textarea {
+        background-color: #1e293b !important;
+        border-color: #475569 !important;
+        color: #f1f5f9 !important;
+      }
+      .dark input::placeholder, .dark textarea::placeholder {
+        color: #64748b !important;
+      }
     </style>
   </head>
-  <body class="bg-slate-50 text-slate-900 antialiased">
+  <body class="bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100 transition-colors duration-200">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

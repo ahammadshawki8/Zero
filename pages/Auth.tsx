@@ -20,21 +20,21 @@ export const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col justify-center py-8 px-4 sm:px-6 lg:px-8 transition-colors">
+      <div className="mx-auto w-full max-w-md">
         <div className="flex justify-center mb-6">
           <Logo size="xl" showText={false} />
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-slate-900">
+        <h2 className="mt-4 text-center text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
           Zero Waste Management
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-600">
+        <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
           Smart cities start from zero.
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <Card className="py-8 px-4 shadow-xl border-0 sm:px-10">
+      <div className="mt-6 sm:mt-8 mx-auto w-full max-w-md">
+        <Card className="py-6 sm:py-8 px-4 sm:px-10 shadow-xl border-0">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <Select
@@ -76,7 +76,7 @@ export const AuthPage: React.FC<AuthProps> = ({ onLogin }) => {
                 <div className="w-full border-t border-slate-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-slate-500">Or</span>
+                <span className="bg-white dark:bg-slate-800 px-2 text-slate-500 dark:text-slate-400">Or</span>
               </div>
             </div>
 

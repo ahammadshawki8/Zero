@@ -1,1 +1,0 @@
-// Deprecated. Components moved to pages/cleaner/*.

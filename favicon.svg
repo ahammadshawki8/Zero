@@ -1,0 +1,20 @@
+<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="largeMask">
+      <rect width="100" height="100" fill="white" />
+      <circle cx="38" cy="62" r="22" fill="black" />
+    </mask>
+    <mask id="mediumMask">
+      <rect width="100" height="100" fill="white" />
+      <circle cx="58" cy="38" r="28" fill="black" />
+      <circle cx="22" cy="78" r="14" fill="black" />
+    </mask>
+    <mask id="smallMask">
+      <rect width="100" height="100" fill="white" />
+      <circle cx="38" cy="62" r="22" fill="black" />
+    </mask>
+  </defs>
+  <circle cx="58" cy="38" r="28" fill="#16a34a" mask="url(#largeMask)" />
+  <circle cx="38" cy="62" r="22" fill="#22c55e" mask="url(#mediumMask)" />
+  <circle cx="22" cy="78" r="14" fill="#15803d" mask="url(#smallMask)" />
+</svg>
