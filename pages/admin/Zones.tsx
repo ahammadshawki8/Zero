@@ -1,22 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button, Input, Toast } from '../../components/ui';
-import { MOCK_ZONES } from '../../constants';
 import { Zone, LatLng } from '../../types';
 import { ZoneDisplayMap } from '../../components/ZoneMap';
 import { ZoneEditor } from '../../components/ZoneEditor';
-import { Filter, Plus, Edit2, Trash2, MapPin, X } from 'lucide-react';
+import { Filter, Plus, Edit2, Trash2, MapPin, X, Check } from 'lucide-react';
+import { adminAPI } from '../../services/api';
 
 type ModalMode = 'none' | 'add' | 'edit' | 'view';
 
 const ZONE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
 export const AdminZones = () => {
-  const [zones, setZones] = useState<Zone[]>(MOCK_ZONES);
+  const [zones, setZones] = useState<Zone[]>([]);
   const [modalMode, setModalMode] = useState<ModalMode>('none');
   const [editingZone, setEditingZone] = useState<Zone | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [tempPolygon, setTempPolygon] = useState<LatLng[]>([]);
-  const [toast, setToast] = useState({ show: false, message: '', type: 'error' as const });
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadZones = async () => {
+      try {
+        const data = await adminAPI.getZones();
+        setZones(data);
+      } catch (error: any) {
+        console.error('Failed to load zones:', error);
+        setToast({ show: true, message: 'Failed to load zones', type: 'error' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadZones();
+  }, []);
 
   const handleAddNew = () => {
     setModalMode('add');
@@ -28,52 +45,92 @@ export const AdminZones = () => {
   const handleEdit = (zone: Zone) => {
     setModalMode('edit');
     setFormData({ name: zone.name, description: zone.description });
-    setTempPolygon(zone.polygon);
+    setTempPolygon(zone.polygon || []);
     setEditingZone(zone);
   };
 
-  const handleDelete = (zoneId: string) => {
+  const handleDelete = async (zoneId: string) => {
     if (confirm('Are you sure you want to delete this zone?')) {
-      setZones(zones.filter(z => z.id !== zoneId));
+      try {
+        await adminAPI.deleteZone(zoneId);
+        setZones(zones.filter(z => z.id !== zoneId));
+        setToast({ show: true, message: 'Zone deleted successfully!', type: 'success' });
+      } catch (error: any) {
+        console.error('Failed to delete zone:', error);
+        setToast({ show: true, message: error.message || 'Failed to delete zone', type: 'error' });
+      }
     }
   };
 
   const handleSavePolygon = (polygon: LatLng[]) => {
     setTempPolygon(polygon);
+    setToast({ show: true, message: 'Zone boundary saved! Now click "Create Zone" or "Save Changes" to save the zone.', type: 'success' });
   };
 
-  const handleSaveZone = () => {
+  const handleSaveZone = async () => {
     if (!formData.name || tempPolygon.length < 3) {
       setToast({ show: true, message: 'Please provide a name and draw a zone boundary (at least 3 points)', type: 'error' });
       return;
     }
 
-    if (modalMode === 'add') {
-      const newZone: Zone = {
-        id: Date.now().toString(),
-        name: formData.name,
-        description: formData.description,
-        cleanlinessScore: 100,
-        polygon: tempPolygon,
-        color: ZONE_COLORS[zones.length % ZONE_COLORS.length],
-      };
-      setZones([...zones, newZone]);
-    } else if (modalMode === 'edit' && editingZone) {
-      setZones(zones.map(z => 
-        z.id === editingZone.id 
-          ? { ...z, name: formData.name, description: formData.description, polygon: tempPolygon }
-          : z
-      ));
-    }
+    try {
+      if (modalMode === 'add') {
+        const newZone: Omit<Zone, 'id'> = {
+          name: formData.name,
+          description: formData.description,
+          cleanlinessScore: 100,
+          polygon: tempPolygon,
+          color: ZONE_COLORS[zones.length % ZONE_COLORS.length],
+        };
+        const createdZone = await adminAPI.createZone(newZone);
+        // Ensure polygon is included in the created zone
+        const zoneWithPolygon = {
+          ...createdZone,
+          polygon: createdZone.polygon || tempPolygon
+        };
+        setZones([...zones, zoneWithPolygon]);
+        setToast({ show: true, message: 'Zone created successfully!', type: 'success' });
+      } else if (modalMode === 'edit' && editingZone) {
+        const updatedZone = await adminAPI.updateZone(editingZone.id, {
+          name: formData.name,
+          description: formData.description,
+          polygon: tempPolygon,
+        });
+        // Ensure polygon is included in the updated zone
+        const zoneWithPolygon = {
+          ...editingZone,
+          ...updatedZone,
+          polygon: updatedZone.polygon || tempPolygon
+        };
+        setZones(zones.map(z => 
+          z.id === editingZone.id ? zoneWithPolygon : z
+        ));
+        setToast({ show: true, message: 'Zone updated successfully!', type: 'success' });
+      }
 
-    setModalMode('none');
-    setEditingZone(null);
+      setModalMode('none');
+      setEditingZone(null);
+    } catch (error: any) {
+      console.error('Failed to save zone:', error);
+      setToast({ show: true, message: error.message || 'Failed to save zone', type: 'error' });
+    }
   };
 
   const handleCancel = () => {
     setModalMode('none');
     setEditingZone(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading zones...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -83,11 +140,11 @@ export const AdminZones = () => {
         message={toast.message}
         type={toast.type}
       />
-      <div className="space-y-6">
+      <div className="space-y-3 sm:space-y-4 md:space-y-6">
       {/* Zone Map Overview */}
       <Card title="Zone Map Overview">
-        <ZoneDisplayMap zones={zones} height="350px" />
-        <div className="mt-4 flex flex-wrap gap-2">
+        <ZoneDisplayMap zones={zones} height="300px" className="sm:height-350px" />
+        <div className="mt-3 sm:mt-4 flex flex-wrap gap-2 sm:gap-3">
           {zones.map(zone => (
             <div key={zone.id} className="flex items-center gap-2 text-sm">
               <div 
@@ -102,7 +159,7 @@ export const AdminZones = () => {
 
       {/* Zones Table */}
       <Card title="Zones Management">
-        <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row gap-2">
             <Input placeholder="Search zones..." className="w-full sm:w-64" />
             <Button variant="outline" className="w-full sm:w-auto"><Filter size={16} className="mr-2" /> Filter</Button>
@@ -115,11 +172,11 @@ export const AdminZones = () => {
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                <th className="px-6 py-3">Color</th>
-                <th className="px-6 py-3">Name</th>
-                <th className="px-6 py-3">Description</th>
-                <th className="px-6 py-3">Boundary Points</th>
-                <th className="px-6 py-3">Cleanliness Score</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm">Color</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm">Name</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm">Description</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm">Boundary Points</th>
+                <th className="px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm">Cleanliness Score</th>
                 <th className="px-6 py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -136,7 +193,7 @@ export const AdminZones = () => {
                   <td className="px-6 py-4 text-slate-500">{zone.description}</td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1 text-slate-500">
-                      <MapPin size={14} /> {zone.polygon.length} points
+                      <MapPin size={14} /> {zone.polygon?.length || 0} points
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -191,7 +248,7 @@ export const AdminZones = () => {
               <p className="text-sm text-slate-500 mb-3">{zone.description}</p>
               <div className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-1 text-slate-500">
-                  <MapPin size={14} /> {zone.polygon.length} points
+                  <MapPin size={14} /> {zone.polygon?.length || 0} points
                 </span>
                 <div className="flex items-center gap-2">
                   <div className="w-16 bg-slate-200 rounded-full h-2">
@@ -242,6 +299,12 @@ export const AdminZones = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Zone Boundary (Draw on Map)
                 </label>
+                <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-700">
+                    <strong>Instructions:</strong> Use the map below to draw the zone boundary, then click "Save Points" to confirm the boundary. 
+                    Finally, click "{modalMode === 'add' ? 'Create Zone' : 'Save Changes'}" at the bottom to save the zone.
+                  </p>
+                </div>
                 <ZoneEditor
                   initialPolygon={tempPolygon}
                   onSave={handleSavePolygon}
@@ -251,11 +314,26 @@ export const AdminZones = () => {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-2 p-4 border-t dark:border-slate-700">
-              <Button variant="outline" onClick={handleCancel} className="w-full sm:w-auto">Cancel</Button>
-              <Button onClick={handleSaveZone} className="w-full sm:w-auto">
-                {modalMode === 'add' ? 'Create Zone' : 'Save Changes'}
-              </Button>
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-2 p-4 border-t dark:border-slate-700">
+              <div className="flex items-center gap-2 text-sm">
+                {tempPolygon.length >= 3 ? (
+                  <span className="text-green-600 flex items-center gap-1">
+                    <Check size={16} />
+                    Boundary set ({tempPolygon.length} points)
+                  </span>
+                ) : (
+                  <span className="text-amber-600 flex items-center gap-1">
+                    <MapPin size={16} />
+                    Draw boundary on map first
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Button variant="outline" onClick={handleCancel} className="w-full sm:w-auto">Cancel</Button>
+                <Button onClick={handleSaveZone} className="w-full sm:w-auto">
+                  {modalMode === 'add' ? 'Create Zone' : 'Save Changes'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>

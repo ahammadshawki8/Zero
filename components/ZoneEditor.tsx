@@ -251,7 +251,7 @@ export const ZoneEditor: React.FC<ZoneEditorProps> = ({
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={points.length < 3}>
-            <Check size={16} className="mr-1" /> Save Zone
+            <Check size={16} className="mr-1" /> Save Points
           </Button>
         </div>
       </div>

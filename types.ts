@@ -61,12 +61,14 @@ export interface Report {
   cleanupComparison?: CleanupComparison; // AI comparison of before/after
   // Citizen review (citizen watchdog feature)
   review?: CleanupReview;
+  citizenReview?: CleanupReview;
 }
 
 export interface CleanupReview {
   rating: number; // 1-5 stars
   comment?: string;
-  reviewedAt: string;
+  reviewedAt?: string;
+  timestamp?: string;
 }
 
 export interface Task {
@@ -80,17 +82,31 @@ export interface Task {
   status: Status;
   priority: Severity;
   dueDate: string;
+  location?: ReportLocation;
   evidenceImageUrl?: string;
+  beforeImageUrl?: string; // Image from the original report
   reward: number; // Payment in BDT for completing the task
   createdAt: string;
   takenAt?: string; // When cleaner took the task
   completedAt?: string;
+  // AI Analysis and cleanup data
+  aiAnalysis?: WasteAnalysis;
+  cleanupComparison?: CleanupComparison;
+  review?: CleanupReview; // Citizen review of the cleanup
 }
 
 export interface CleanerProfile {
   userId: string;
   name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
   avatar?: string;
+  language?: string;
+  emailNotifications?: boolean;
+  pushNotifications?: boolean;
+  notify_report_updates?: boolean;
+  notify_news_updates?: boolean;
   totalEarnings: number; // Total BDT earned
   pendingEarnings: number; // Earnings from tasks not yet paid out
   completedTasks: number;
@@ -131,7 +147,11 @@ export interface Badge {
 export interface CitizenProfile {
   userId: string;
   name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
   avatar?: string;
+  avatarUrl?: string;
   greenPoints: number;
   totalReports: number;
   approvedReports: number;
@@ -140,6 +160,8 @@ export interface CitizenProfile {
   rank: number;
   badges: Badge[];
   joinedAt: string;
+  createdAt?: string;
+  notificationSettings?: any;
 }
 
 export interface LeaderboardEntry {
@@ -147,9 +169,16 @@ export interface LeaderboardEntry {
   userId: string;
   name: string;
   avatar?: string;
+  avatarUrl?: string;
   greenPoints: number;
   approvedReports: number;
   badges: number;
+  // Cleaner-specific fields
+  totalEarnings?: number;
+  monthlyEarnings?: number;
+  completedTasks?: number;
+  rating?: number;
+  isCurrentUser?: boolean;
 }
 
 // AI Waste Analysis types

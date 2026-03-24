@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Card, Button, Input, Modal } from '../../components/ui';
-import { MOCK_CURRENT_USER_PROFILE, ALL_BADGES } from '../../constants';
+import React, { useRef, useState, useEffect } from 'react';
+import { Card, Button, Input, Modal, Toast } from '../../components/ui';
+import { citizenAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   User,
   Mail,
@@ -20,71 +21,272 @@ import {
   Trash2,
   Download,
 } from 'lucide-react';
+import { CitizenProfile } from '../../types';
 
 export const Profile = () => {
-  const [profile, setProfile] = useState({
-    ...MOCK_CURRENT_USER_PROFILE,
-    email: 'alice.citizen@email.com',
-    phone: '+880 1712-345678',
-    address: 'Gulshan-2, Dhaka, Bangladesh',
-  });
-
+  const { user, updateUser } = useAuth();
+  const [profile, setProfile] = useState<CitizenProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState(profile);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+  });
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
 
   const [notifications, setNotifications] = useState({
     reportUpdates: true,
-    pointsEarned: true,
-    leaderboardChanges: false,
-    weeklyDigest: true,
     promotions: false,
   });
 
-  const handleSaveProfile = () => {
-    setProfile(editForm);
-    setIsEditing(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({
+    show: false,
+    message: '',
+    type: 'success',
+  });
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Load profile data on component mount
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profileData = await citizenAPI.getProfile();
+        setProfile(profileData);
+        setEditForm({
+          name: profileData.name || '',
+          email: profileData.email || '',
+          phone: profileData.phone || '',
+          address: profileData.address || '',
+        });
+        // Load notification preferences if available
+        if (profileData.notificationSettings) {
+          setNotifications(profileData.notificationSettings);
+        }
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+        setToast({ show: true, message: 'Failed to load profile data', type: 'error' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
+
+  const handleSaveProfile = async () => {
+    try {
+      // Map frontend form fields to backend expected fields
+      const updateData = {
+        name: editForm.name,
+        phone: editForm.phone,
+        address: editForm.address,
+        avatar_url: profile?.avatarUrl, // Keep existing avatar
+      };
+      
+      const updatedProfile = await citizenAPI.updateProfile(updateData);
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      setToast({ show: true, message: 'Profile updated successfully', type: 'success' });
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      setToast({ show: true, message: 'Failed to update profile', type: 'error' });
+    }
   };
 
   const handleCancelEdit = () => {
-    setEditForm(profile);
+    if (profile) {
+      setEditForm({
+        name: profile.name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        address: profile.address || '',
+      });
+    }
     setIsEditing(false);
   };
 
+  const handleUpdateNotifications = async (key: string, value: boolean) => {
+    const newNotifications = { ...notifications, [key]: value };
+    setNotifications(newNotifications);
+    
+    try {
+      await citizenAPI.updateNotificationSettings(newNotifications);
+      setToast({ show: true, message: 'Notification preferences updated', type: 'success' });
+    } catch (error) {
+      console.error('Failed to update notifications:', error);
+      // Revert the change
+      setNotifications(notifications);
+      setToast({ show: true, message: 'Failed to update notification preferences', type: 'error' });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setToast({ show: true, message: 'New passwords do not match', type: 'error' });
+      return;
+    }
+
+    try {
+      await citizenAPI.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setShowPasswordModal(false);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setToast({ show: true, message: 'Password changed successfully', type: 'success' });
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      setToast({ show: true, message: 'Failed to change password', type: 'error' });
+    }
+  };
+
+  const handleDownloadData = async () => {
+    try {
+      await citizenAPI.downloadUserData();
+      setToast({ show: true, message: 'Data download started', type: 'info' });
+    } catch (error) {
+      console.error('Failed to download data:', error);
+      setToast({ show: true, message: 'Failed to download data', type: 'error' });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await citizenAPI.deleteAccount();
+      setShowDeleteModal(false);
+      setToast({ show: true, message: 'Account deletion initiated', type: 'info' });
+      // Redirect to login or handle logout
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      setToast({ show: true, message: 'Failed to delete account', type: 'error' });
+    }
+  };
+
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read selected image'));
+      reader.readAsDataURL(file);
+    });
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !profile) return;
+
+    if (!file.type.startsWith('image/')) {
+      setToast({ show: true, message: 'Please select a valid image file', type: 'warning' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setToast({ show: true, message: 'Image size must be 5MB or less', type: 'warning' });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const avatarDataUrl = await fileToDataUrl(file);
+      const updatedProfile = await citizenAPI.updateProfile({ avatar_url: avatarDataUrl } as any);
+      setProfile(updatedProfile);
+      updateUser({ avatar: updatedProfile.avatarUrl || avatarDataUrl });
+      setToast({ show: true, message: 'Avatar updated successfully', type: 'success' });
+    } catch (error) {
+      console.error('Failed to update avatar:', error);
+      setToast({ show: true, message: 'Failed to update avatar', type: 'error' });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-slate-600">Failed to load profile data</p>
+        <Button onClick={() => window.location.reload()} className="mt-4">
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="w-full max-w-2xl sm:max-w-4xl mx-auto space-y-3 sm:space-y-4 md:space-y-6 px-3 sm:px-4 md:px-6">
+      <Toast
+        isOpen={toast.show}
+        onClose={() => setToast({ ...toast, show: false })}
+        message={toast.message}
+        type={toast.type}
+      />
+
       {/* Profile Header */}
-      <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg">
-        <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-6">
+      <div className="bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl p-3 sm:p-4 md:p-6 text-white shadow-lg dark:shadow-slate-900/30">
+        <div className="flex flex-col md:flex-row items-center gap-3 sm:gap-4 md:gap-6">
           {/* Avatar */}
           <div className="relative">
-            <img
-              src={profile.avatar}
-              alt={profile.name}
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white/30 shadow-lg"
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarUpload}
             />
-            <button className="absolute bottom-0 right-0 w-7 h-7 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center text-green-600 shadow-md hover:bg-green-50 transition-colors">
+            <img
+              src={profile.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || 'User')}&background=10b981&color=fff`}
+              alt={profile.name || 'User'}
+              className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border-4 border-white/30 shadow-lg"
+            />
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={isUploadingAvatar}
+              className="absolute bottom-0 right-0 w-7 h-7 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center text-slate-700 shadow-md hover:bg-slate-100 transition-colors disabled:opacity-60"
+            >
               <Camera size={14} />
             </button>
+            {isUploadingAvatar && (
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[11px] text-slate-200 whitespace-nowrap">
+                Uploading...
+              </div>
+            )}
           </div>
 
           {/* Info */}
           <div className="text-center md:text-left flex-1">
-            <h1 className="text-xl sm:text-2xl font-bold">{profile.name}</h1>
-            <p className="text-green-100 text-sm">@{profile.name.toLowerCase().replace(' ', '_')}</p>
+            <h1 className="text-xl sm:text-2xl font-bold">{profile.name || 'User'}</h1>
+            <p className="text-slate-300 text-sm">Citizen Reporter</p>
             <div className="flex flex-wrap justify-center md:justify-start gap-2 sm:gap-4 mt-2 sm:mt-3 text-xs sm:text-sm">
               <span className="flex items-center gap-1">
                 <Calendar size={12} className="sm:w-3.5 sm:h-3.5" />
-                Joined {new Date(profile.joinedAt).toLocaleDateString()}
+                Joined {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Recently'}
               </span>
               <span className="flex items-center gap-1">
                 <Leaf size={12} className="sm:w-3.5 sm:h-3.5" />
-                {profile.greenPoints} Points
+                {profile.greenPoints || 0} Points
               </span>
               <span className="flex items-center gap-1">
                 <Award size={12} className="sm:w-3.5 sm:h-3.5" />
-                Rank #{profile.rank}
+                Rank #{profile.rank || 'N/A'}
               </span>
             </div>
           </div>
@@ -93,7 +295,7 @@ export const Profile = () => {
           <Button
             variant="outline"
             onClick={() => setIsEditing(true)}
-            className="border-white/30 text-white hover:bg-white/10 w-full md:w-auto"
+            className="bg-white text-slate-800 hover:bg-slate-100 active:scale-95 w-full md:w-auto transition-transform touch-manipulation"
           >
             <Edit3 size={16} className="mr-2" />
             Edit Profile
@@ -101,124 +303,74 @@ export const Profile = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 text-center">
-          <div className="text-3xl font-bold text-green-600">{profile.totalReports}</div>
-          <div className="text-sm text-slate-500">Total Reports</div>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 text-center">
-          <div className="text-3xl font-bold text-blue-600">{profile.approvedReports}</div>
-          <div className="text-sm text-slate-500">Approved</div>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 text-center">
-          <div className="text-3xl font-bold text-orange-500">{profile.currentStreak}</div>
-          <div className="text-sm text-slate-500">Day Streak</div>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 text-center">
-          <div className="text-3xl font-bold text-purple-600">{profile.badges.length}</div>
-          <div className="text-sm text-slate-500">Badges</div>
-        </div>
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+        {/* Personal Information */}
+        <Card title="Personal Information">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
+              <User className="text-slate-400" size={20} />
+              <div className="flex-1">
+                <div className="text-xs text-slate-500">Full Name</div>
+                <div className="font-medium">{profile.name || 'Not provided'}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
+              <Mail className="text-slate-400" size={20} />
+              <div className="flex-1">
+                <div className="text-xs text-slate-500">Email Address</div>
+                <div className="font-medium">{profile.email || 'Not provided'}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
+              <Phone className="text-slate-400" size={20} />
+              <div className="flex-1">
+                <div className="text-xs text-slate-500">Phone Number</div>
+                <div className="font-medium">{profile.phone || 'Not provided'}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
+              <MapPin className="text-slate-400" size={20} />
+              <div className="flex-1">
+                <div className="text-xs text-slate-500">Address</div>
+                <div className="font-medium">{profile.address || 'Not provided'}</div>
+              </div>
+            </div>
+          </div>
+        </Card>
 
-      {/* Personal Information */}
-      <Card title="Personal Information">
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-            <User className="text-slate-400" size={20} />
-            <div className="flex-1">
-              <div className="text-xs text-slate-500">Full Name</div>
-              <div className="font-medium">{profile.name}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-            <Mail className="text-slate-400" size={20} />
-            <div className="flex-1">
-              <div className="text-xs text-slate-500">Email Address</div>
-              <div className="font-medium">{profile.email}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-            <Phone className="text-slate-400" size={20} />
-            <div className="flex-1">
-              <div className="text-xs text-slate-500">Phone Number</div>
-              <div className="font-medium">{profile.phone}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
-            <MapPin className="text-slate-400" size={20} />
-            <div className="flex-1">
-              <div className="text-xs text-slate-500">Address</div>
-              <div className="font-medium">{profile.address}</div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Badges */}
-      <Card title="Your Badges">
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 sm:gap-3">
-          {ALL_BADGES.map((badge) => {
-            const earned = profile.badges.find((b) => b.id === badge.id);
-            return (
-              <div
-                key={badge.id}
-                className={`p-3 rounded-xl text-center transition-all ${
-                  earned
-                    ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200'
-                    : 'bg-slate-50 border-2 border-dashed border-slate-200 opacity-50'
-                }`}
-              >
-                <div className="text-2xl mb-1">{badge.icon}</div>
-                <div className={`text-xs font-medium ${earned ? 'text-green-800' : 'text-slate-400'}`}>
-                  {badge.name}
+        {/* Notification Settings */}
+        <Card title="Notification Preferences">
+          <div className="space-y-3">
+            {[
+              { key: 'reportUpdates', label: 'Report & Activity Updates', desc: 'Notifications about your reports and cleanup activity' },
+              { key: 'promotions', label: 'News & Updates', desc: 'Platform updates and eco tips' },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                <div>
+                  <div className="font-medium text-slate-800">{item.label}</div>
+                  <div className="text-xs text-slate-500">{item.desc}</div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* Notification Settings */}
-      <Card title="Notification Preferences">
-        <div className="space-y-3">
-          {[
-            { key: 'reportUpdates', label: 'Report Status Updates', desc: 'Get notified when your report status changes' },
-            { key: 'pointsEarned', label: 'Points Earned', desc: 'Notifications when you earn Green Points' },
-            { key: 'leaderboardChanges', label: 'Leaderboard Changes', desc: 'Alert when your rank changes' },
-            { key: 'weeklyDigest', label: 'Weekly Digest', desc: 'Summary of your weekly activity' },
-            { key: 'promotions', label: 'News & Updates', desc: 'Platform updates and eco tips' },
-          ].map((item) => (
-            <div key={item.key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-              <div>
-                <div className="font-medium text-slate-800">{item.label}</div>
-                <div className="text-xs text-slate-500">{item.desc}</div>
-              </div>
-              <button
-                onClick={() =>
-                  setNotifications((prev) => ({
-                    ...prev,
-                    [item.key]: !prev[item.key as keyof typeof prev],
-                  }))
-                }
-                className={`w-12 h-6 rounded-full transition-colors relative ${
-                  notifications[item.key as keyof typeof notifications]
-                    ? 'bg-green-500'
-                    : 'bg-slate-300'
-                }`}
-              >
-                <div
-                  className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                <button
+                  onClick={() => handleUpdateNotifications(item.key, !notifications[item.key as keyof typeof notifications])}
+                  className={`w-12 h-6 rounded-full transition-colors relative ${
                     notifications[item.key as keyof typeof notifications]
-                      ? 'translate-x-7'
-                      : 'translate-x-1'
+                      ? 'bg-green-500'
+                      : 'bg-slate-300'
                   }`}
-                />
-              </button>
-            </div>
-          ))}
-        </div>
-      </Card>
+                >
+                  <div
+                    className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                      notifications[item.key as keyof typeof notifications]
+                        ? 'translate-x-7'
+                        : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
 
       {/* Account Settings */}
       <Card title="Account Settings">
@@ -234,7 +386,10 @@ export const Profile = () => {
             <ChevronRight className="text-slate-400" size={20} />
           </button>
 
-          <button className="w-full flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+          <button 
+            onClick={handleDownloadData}
+            className="w-full flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+          >
             <div className="flex items-center gap-3">
               <Download className="text-slate-400" size={20} />
               <span className="font-medium">Download My Data</span>
@@ -285,6 +440,7 @@ export const Profile = () => {
               type="email"
               value={editForm.email}
               onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              disabled
             />
           </div>
           <div>
@@ -314,22 +470,37 @@ export const Profile = () => {
             <Button variant="outline" onClick={() => setShowPasswordModal(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setShowPasswordModal(false)}>Update Password</Button>
+            <Button onClick={handleChangePassword}>Update Password</Button>
           </div>
         }
       >
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Current Password</label>
-            <Input type="password" placeholder="Enter current password" />
+            <Input 
+              type="password" 
+              placeholder="Enter current password"
+              value={passwordForm.currentPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
-            <Input type="password" placeholder="Enter new password" />
+            <Input 
+              type="password" 
+              placeholder="Enter new password"
+              value={passwordForm.newPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Confirm New Password</label>
-            <Input type="password" placeholder="Confirm new password" />
+            <Input 
+              type="password" 
+              placeholder="Confirm new password"
+              value={passwordForm.confirmPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+            />
           </div>
         </div>
       </Modal>
@@ -345,7 +516,7 @@ export const Profile = () => {
               Cancel
             </Button>
             <Button
-              onClick={() => setShowDeleteModal(false)}
+              onClick={handleDeleteAccount}
               className="bg-red-600 hover:bg-red-700"
             >
               Delete Account

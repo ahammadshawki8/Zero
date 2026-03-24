@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Card } from '../../components/ui';
+import { useState, useEffect } from 'react';
+import { Card, Toast } from '../../components/ui';
 import {
   Trophy,
   Medal,
@@ -9,359 +9,284 @@ import {
   TrendingUp,
   Crown,
 } from 'lucide-react';
-
-// Mock cleaner leaderboard data based on earnings
-const MOCK_CLEANER_LEADERBOARD = [
-  {
-    rank: 1,
-    oderId: 'C-5',
-    name: 'Rafiq Ahmed',
-    avatar: 'https://i.pravatar.cc/150?img=52',
-    totalEarnings: 45600,
-    completedTasks: 76,
-    rating: 4.9,
-    thisMonth: 8500,
-  },
-  {
-    rank: 2,
-    oderId: 'C-3',
-    name: 'Kamal Hossain',
-    avatar: 'https://i.pravatar.cc/150?img=53',
-    totalEarnings: 38200,
-    completedTasks: 64,
-    rating: 4.8,
-    thisMonth: 7200,
-  },
-  {
-    rank: 3,
-    oderId: 'C-7',
-    name: 'Jamal Uddin',
-    avatar: 'https://i.pravatar.cc/150?img=54',
-    totalEarnings: 32100,
-    completedTasks: 52,
-    rating: 4.7,
-    thisMonth: 6100,
-  },
-  {
-    rank: 4,
-    oderId: 'C-2',
-    name: 'Rahim Khan',
-    avatar: 'https://i.pravatar.cc/150?img=55',
-    totalEarnings: 28500,
-    completedTasks: 45,
-    rating: 4.6,
-    thisMonth: 5400,
-  },
-  {
-    rank: 5,
-    oderId: 'C-1',
-    name: 'Bob Cleaner',
-    avatar: 'https://i.pravatar.cc/150?img=8',
-    totalEarnings: 24000,
-    completedTasks: 38,
-    rating: 4.8,
-    thisMonth: 4800,
-    isCurrentUser: true,
-  },
-  {
-    rank: 6,
-    oderId: 'C-8',
-    name: 'Salam Mia',
-    avatar: 'https://i.pravatar.cc/150?img=56',
-    totalEarnings: 19800,
-    completedTasks: 32,
-    rating: 4.5,
-    thisMonth: 3900,
-  },
-  {
-    rank: 7,
-    oderId: 'C-4',
-    name: 'Habib Rahman',
-    avatar: 'https://i.pravatar.cc/150?img=57',
-    totalEarnings: 15600,
-    completedTasks: 26,
-    rating: 4.4,
-    thisMonth: 3200,
-  },
-  {
-    rank: 8,
-    oderId: 'C-6',
-    name: 'Nasir Uddin',
-    avatar: 'https://i.pravatar.cc/150?img=58',
-    totalEarnings: 12400,
-    completedTasks: 21,
-    rating: 4.3,
-    thisMonth: 2600,
-  },
-  {
-    rank: 9,
-    oderId: 'C-9',
-    name: 'Faruk Hasan',
-    avatar: 'https://i.pravatar.cc/150?img=59',
-    totalEarnings: 8900,
-    completedTasks: 15,
-    rating: 4.2,
-    thisMonth: 1800,
-  },
-  {
-    rank: 10,
-    oderId: 'C-10',
-    name: 'Belal Ahmed',
-    avatar: 'https://i.pravatar.cc/150?img=60',
-    totalEarnings: 5200,
-    completedTasks: 9,
-    rating: 4.1,
-    thisMonth: 1200,
-  },
-];
+import { LeaderboardEntry } from '../../types';
+import { cleanerAPI } from '../../services/api';
 
 type TimeFilter = 'ALL_TIME' | 'THIS_MONTH' | 'THIS_WEEK';
 
 export const CleanerLeaderboard = () => {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('ALL_TIME');
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
 
-  const currentUser = MOCK_CLEANER_LEADERBOARD.find((c) => c.isCurrentUser);
+  useEffect(() => {
+    const loadLeaderboard = async () => {
+      try {
+        setIsLoading(true);
+        const apiPeriod =
+          timeFilter === 'THIS_MONTH'
+            ? 'month'
+            : timeFilter === 'THIS_WEEK'
+              ? 'week'
+              : 'all_time';
 
-  // Sort by earnings based on filter
-  const sortedLeaderboard = [...MOCK_CLEANER_LEADERBOARD].sort((a, b) => {
-    if (timeFilter === 'THIS_MONTH') {
-      return b.thisMonth - a.thisMonth;
-    }
-    return b.totalEarnings - a.totalEarnings;
-  });
+        const data = await cleanerAPI.getLeaderboard(apiPeriod, 50);
+        setLeaderboard(data);
+      } catch (error: any) {
+        console.error('Failed to load leaderboard:', error);
+        setToast({ show: true, message: 'Failed to load leaderboard', type: 'error' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadLeaderboard();
+  }, [timeFilter]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading leaderboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const currentUser = leaderboard.find((entry) => entry.isCurrentUser);
+  const sortedLeaderboard = [...leaderboard].sort((a, b) => Number(a.rank || 0) - Number(b.rank || 0));
+  const first = sortedLeaderboard[0];
+  const second = sortedLeaderboard[1];
+  const third = sortedLeaderboard[2];
+
+  const getDisplayEarnings = (entry?: LeaderboardEntry) => {
+    if (!entry) return 0;
+    return Number(timeFilter === 'ALL_TIME' ? entry.totalEarnings || 0 : entry.monthlyEarnings || 0);
+  };
+
+  const getAvatar = (entry: LeaderboardEntry | undefined, fallbackIndex: number) =>
+    entry?.avatar || entry?.avatarUrl || `https://i.pravatar.cc/150?img=${fallbackIndex}`;
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown size={20} className="text-yellow-500" />;
     if (rank === 2) return <Medal size={20} className="text-slate-400" />;
-    if (rank === 3) return <Medal size={20} className="text-amber-600" />;
+    if (rank === 3) return <Medal size={20} className="text-sky-500" />;
     return <span className="text-slate-500 font-bold">#{rank}</span>;
   };
 
   const getRankBg = (rank: number) => {
-    if (rank === 1) return 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200';
-    if (rank === 2) return 'bg-gradient-to-r from-slate-50 to-slate-100 border-slate-200';
-    if (rank === 3) return 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200';
-    return 'bg-white border-slate-200';
+    if (rank === 1) {
+      return 'bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-300 dark:from-emerald-900/30 dark:to-teal-900/30 dark:border-emerald-700';
+    }
+    if (rank === 2) {
+      return 'bg-gradient-to-r from-slate-50 to-slate-100 border-slate-300 dark:from-slate-800 dark:to-slate-700 dark:border-slate-600';
+    }
+    if (rank === 3) {
+      return 'bg-gradient-to-r from-sky-50 to-blue-50 border-sky-300 dark:from-sky-900/25 dark:to-blue-900/25 dark:border-sky-700';
+    }
+    return 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700';
   };
 
+  const periodLabel =
+    timeFilter === 'THIS_WEEK'
+      ? 'This Week'
+      : timeFilter === 'THIS_MONTH'
+        ? 'This Month'
+        : 'All Time';
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-4 sm:p-6 text-white shadow-lg">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 sm:p-3 bg-white/20 rounded-xl">
-            <Trophy size={24} className="sm:w-8 sm:h-8" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Top Earners</h1>
-            <p className="text-amber-100 text-sm">Compete with fellow cleaners and earn more!</p>
-          </div>
-        </div>
-
-        {/* Current User Stats */}
-        {currentUser && (
-          <div className="bg-white/10 rounded-xl p-3 sm:p-4 mt-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <img
-                  src={currentUser.avatar}
-                  alt={currentUser.name}
-                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-white/30 flex-shrink-0"
-                />
-                <div className="min-w-0">
-                  <p className="font-semibold text-sm sm:text-base">Your Ranking</p>
-                  <p className="text-amber-100 text-xs sm:text-sm truncate">Keep completing tasks!</p>
-                </div>
+    <>
+      <Toast
+        isOpen={toast.show}
+        onClose={() => setToast({ ...toast, show: false })}
+        message={toast.message}
+        type={toast.type}
+      />
+      <div className="space-y-3 sm:space-y-4 md:space-y-6">
+        <div className="bg-gradient-to-r from-slate-800 via-slate-800 to-emerald-800 rounded-2xl p-3 sm:p-4 md:p-6 text-white shadow-lg border border-slate-700/40 dark:shadow-slate-900/40">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 sm:p-3 bg-white/15 rounded-xl border border-white/20">
+                <Trophy size={24} className="sm:w-7 sm:h-7" />
               </div>
-              <div className="text-right flex-shrink-0">
-                <div className="text-2xl sm:text-3xl font-bold">#{currentUser.rank}</div>
-                <div className="text-xs sm:text-sm text-amber-100">
-                  ৳{currentUser.totalEarnings.toLocaleString()}
-                </div>
+              <div>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Cleaner Leaderboards</h1>
+                <p className="text-emerald-100/90 text-sm">Track rankings, earnings, and performance at a glance.</p>
               </div>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* Time Filter */}
-      <div className="flex space-x-1 bg-slate-100 p-1 rounded-lg w-fit">
-        <button
-          onClick={() => setTimeFilter('ALL_TIME')}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            timeFilter === 'ALL_TIME'
-              ? 'bg-white text-green-700 shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          All Time
-        </button>
-        <button
-          onClick={() => setTimeFilter('THIS_MONTH')}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-            timeFilter === 'THIS_MONTH'
-              ? 'bg-white text-green-700 shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          This Month
-        </button>
-      </div>
-
-      {/* Top 3 Podium */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
-        {/* 2nd Place */}
-        <div className="flex flex-col items-center pt-6 sm:pt-8">
-          <div className="relative">
-            <img
-              src={sortedLeaderboard[1]?.avatar}
-              alt={sortedLeaderboard[1]?.name}
-              className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-4 border-slate-300 object-cover"
-            />
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-slate-400 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
-              2
+            <div className="flex flex-wrap gap-2 bg-white/10 p-1 rounded-xl border border-white/15 w-fit">
+              <button
+                onClick={() => setTimeFilter('ALL_TIME')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                  timeFilter === 'ALL_TIME'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-100 hover:bg-white/10'
+                }`}
+              >
+                All Time
+              </button>
+              <button
+                onClick={() => setTimeFilter('THIS_MONTH')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                  timeFilter === 'THIS_MONTH'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-100 hover:bg-white/10'
+                }`}
+              >
+                This Month
+              </button>
+              <button
+                onClick={() => setTimeFilter('THIS_WEEK')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all ${
+                  timeFilter === 'THIS_WEEK'
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-100 hover:bg-white/10'
+                }`}
+              >
+                This Week
+              </button>
             </div>
           </div>
-          <p className="mt-3 sm:mt-4 font-semibold text-slate-800 dark:text-slate-200 text-center text-xs sm:text-sm line-clamp-1">
-            {sortedLeaderboard[1]?.name}
-          </p>
-          <p className="text-green-600 dark:text-green-400 font-bold text-sm sm:text-base">
-            ৳{(timeFilter === 'THIS_MONTH' ? sortedLeaderboard[1]?.thisMonth : sortedLeaderboard[1]?.totalEarnings)?.toLocaleString()}
-          </p>
-          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-            <CheckCircle size={10} className="hidden sm:block" />
-            <span className="hidden sm:inline">{sortedLeaderboard[1]?.completedTasks} tasks</span>
-            <span className="sm:hidden">{sortedLeaderboard[1]?.completedTasks}</span>
-          </div>
-        </div>
-
-        {/* 1st Place */}
-        <div className="flex flex-col items-center">
-          <div className="relative">
-            <div className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2">
-              <Crown size={20} className="sm:w-6 sm:h-6 text-yellow-500" />
-            </div>
-            <img
-              src={sortedLeaderboard[0]?.avatar}
-              alt={sortedLeaderboard[0]?.name}
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-yellow-400 object-cover"
-            />
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-yellow-500 text-white w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
-              1
-            </div>
-          </div>
-          <p className="mt-3 sm:mt-4 font-bold text-slate-800 dark:text-slate-200 text-center text-sm sm:text-base line-clamp-1">{sortedLeaderboard[0]?.name}</p>
-          <p className="text-green-600 dark:text-green-400 font-bold text-base sm:text-lg">
-            ৳{(timeFilter === 'THIS_MONTH' ? sortedLeaderboard[0]?.thisMonth : sortedLeaderboard[0]?.totalEarnings)?.toLocaleString()}
-          </p>
-          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-            <CheckCircle size={10} className="hidden sm:block" />
-            <span className="hidden sm:inline">{sortedLeaderboard[0]?.completedTasks} tasks</span>
-            <span className="sm:hidden">{sortedLeaderboard[0]?.completedTasks}</span>
-          </div>
-        </div>
-
-        {/* 3rd Place */}
-        <div className="flex flex-col items-center pt-10 sm:pt-12">
-          <div className="relative">
-            <img
-              src={sortedLeaderboard[2]?.avatar}
-              alt={sortedLeaderboard[2]?.name}
-              className="w-10 h-10 sm:w-14 sm:h-14 rounded-full border-4 border-amber-400 object-cover"
-            />
-            <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold">
-              3
-            </div>
-          </div>
-          <p className="mt-3 sm:mt-4 font-semibold text-slate-800 dark:text-slate-200 text-center text-xs sm:text-sm line-clamp-1">
-            {sortedLeaderboard[2]?.name}
-          </p>
-          <p className="text-green-600 dark:text-green-400 font-bold text-sm sm:text-base">
-            ৳{(timeFilter === 'THIS_MONTH' ? sortedLeaderboard[2]?.thisMonth : sortedLeaderboard[2]?.totalEarnings)?.toLocaleString()}
-          </p>
-          <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-            <CheckCircle size={10} className="hidden sm:block" />
-            <span className="hidden sm:inline">{sortedLeaderboard[2]?.completedTasks} tasks</span>
-            <span className="sm:hidden">{sortedLeaderboard[2]?.completedTasks}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Full Leaderboard */}
-      <Card title="Full Rankings">
-        <div className="space-y-2 sm:space-y-3">
-          {sortedLeaderboard.map((cleaner, index) => (
-            <div
-              key={cleaner.oderId}
-              className={`flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-xl border transition-all ${getRankBg(index + 1)} ${
-                cleaner.isCurrentUser ? 'ring-2 ring-green-500' : ''
-              }`}
-            >
-              {/* Rank */}
-              <div className="w-8 sm:w-10 flex justify-center flex-shrink-0">{getRankIcon(index + 1)}</div>
-
-              {/* Avatar */}
-              <img
-                src={cleaner.avatar}
-                alt={cleaner.name}
-                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0"
-              />
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <p className="font-semibold text-slate-800 dark:text-slate-200 truncate text-sm sm:text-base">{cleaner.name}</p>
-                  {cleaner.isCurrentUser && (
-                    <span className="text-xs bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0">
-                      You
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 sm:gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle size={10} className="hidden sm:block" />
-                    {cleaner.completedTasks} <span className="hidden sm:inline">tasks</span>
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Star size={10} className="fill-yellow-400 text-yellow-400" />
-                    {cleaner.rating}
-                  </span>
-                </div>
+          {currentUser && (
+            <div className="mt-4 sm:mt-5 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+              <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-200">Your Rank</p>
+                <p className="text-2xl font-bold">#{currentUser.rank}</p>
               </div>
+              <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-200">{periodLabel} Earnings</p>
+                <p className="text-2xl font-bold">৳{getDisplayEarnings(currentUser).toLocaleString()}</p>
+              </div>
+              <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-200">Completed Tasks</p>
+                <p className="text-2xl font-bold">{currentUser.completedTasks || 0}</p>
+              </div>
+              <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-3">
+                <p className="text-[11px] uppercase tracking-wide text-slate-200">Rating</p>
+                <p className="text-2xl font-bold">{currentUser.rating || 0}</p>
+              </div>
+            </div>
+          )}
 
-              {/* Earnings */}
-              <div className="text-right flex-shrink-0">
-                <div className="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold text-sm sm:text-base">
-                  <Banknote size={14} className="hidden sm:block" />
-                  ৳{(timeFilter === 'THIS_MONTH' ? cleaner.thisMonth : cleaner.totalEarnings).toLocaleString()}
-                </div>
-                {timeFilter === 'ALL_TIME' && cleaner.thisMonth > 0 && (
-                  <div className="text-xs text-slate-500 dark:text-slate-400 hidden sm:flex items-center gap-1 justify-end">
-                    <TrendingUp size={10} className="text-green-500" />
-                    +৳{cleaner.thisMonth.toLocaleString()}
+          {!currentUser && (
+            <div className="mt-5 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm text-slate-100">
+              You are not ranked yet for this period. Complete tasks to appear on the board.
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+          <Card title="Podium" className="xl:col-span-4">
+            <div className="space-y-3">
+              {[
+                { label: '1st Place', entry: first, badgeBg: 'bg-yellow-500', border: 'border-yellow-400', offset: 'pt-0' },
+                { label: '2nd Place', entry: second, badgeBg: 'bg-slate-500', border: 'border-slate-300', offset: 'pt-0' },
+                { label: '3rd Place', entry: third, badgeBg: 'bg-sky-500', border: 'border-sky-400', offset: 'pt-0' },
+              ].map((item, idx) => (
+                <div
+                  key={item.label}
+                  className={`rounded-xl border p-3 sm:p-4 ${idx === 0 ? 'bg-yellow-50/70 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700' : idx === 1 ? 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700' : 'bg-sky-50/70 dark:bg-sky-900/20 border-sky-200 dark:border-sky-700'} ${item.offset}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative">
+                        <img
+                          src={getAvatar(item.entry, idx + 1)}
+                          alt={item.entry?.name || item.label}
+                          className={`w-11 h-11 rounded-full object-cover border-2 ${item.border}`}
+                        />
+                        <span className={`absolute -bottom-1 -right-1 w-5 h-5 text-[10px] text-white rounded-full flex items-center justify-center font-bold ${item.badgeBg}`}>
+                          {idx + 1}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{item.label}</p>
+                        <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">{item.entry?.name || '-'}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-green-600 dark:text-green-400">৳{getDisplayEarnings(item.entry).toLocaleString()}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{item.entry?.completedTasks || 0} tasks</p>
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </Card>
+          </Card>
 
-      {/* Motivation Banner */}
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl p-5 text-white">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-white/20 rounded-lg">
-            <TrendingUp size={24} />
-          </div>
-          <div>
-            <h3 className="font-bold text-lg">Earn More, Rank Higher!</h3>
-            <p className="text-blue-100 text-sm">
-              Complete more tasks to increase your earnings and climb the leaderboard. Top performers
-              get priority access to high-value tasks!
-            </p>
+          <Card title="Full Rankings" className="xl:col-span-8">
+            <div className="space-y-2 sm:space-y-3">
+              {sortedLeaderboard.map((cleaner, index) => (
+                <div
+                  key={cleaner.userId}
+                  className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border transition-all ${getRankBg(index + 1)} ${
+                    cleaner.isCurrentUser ? 'ring-2 ring-emerald-500/80' : ''
+                  }`}
+                >
+                  <div className="w-8 sm:w-10 flex justify-center flex-shrink-0">{getRankIcon(index + 1)}</div>
+
+                  <img
+                    src={getAvatar(cleaner, index + 1)}
+                    alt={cleaner.name}
+                    className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover border-2 border-white/70 dark:border-slate-600 shadow-sm flex-shrink-0"
+                  />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-900 dark:text-slate-100 truncate text-sm sm:text-base">{cleaner.name}</p>
+                      {cleaner.isCurrentUser && (
+                        <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full flex-shrink-0">
+                          You
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 sm:gap-3 text-xs text-slate-600 dark:text-slate-300 mt-1">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle size={10} className="hidden sm:block" />
+                        {cleaner.completedTasks || 0} <span className="hidden sm:inline">tasks</span>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Star size={10} className="fill-yellow-400 text-yellow-400" />
+                        {cleaner.rating || 0}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right flex-shrink-0">
+                    <div className="flex items-center gap-1 text-green-600 dark:text-green-400 font-bold text-sm sm:text-base justify-end">
+                      <Banknote size={14} className="hidden sm:block" />
+                      ৳{getDisplayEarnings(cleaner).toLocaleString()}
+                    </div>
+                    {timeFilter === 'ALL_TIME' && (cleaner.monthlyEarnings || 0) > 0 && (
+                      <div className="text-xs text-slate-600 dark:text-slate-300 hidden sm:flex items-center gap-1 justify-end mt-0.5">
+                        <TrendingUp size={10} className="text-emerald-500" />
+                        +৳{(cleaner.monthlyEarnings || 0).toLocaleString()} this month
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        <div className="bg-gradient-to-r from-sky-600 to-emerald-600 rounded-xl p-5 text-white">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/20 rounded-lg">
+              <TrendingUp size={24} />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">Keep Climbing</h3>
+              <p className="text-sky-100 text-sm">
+                Finish high-priority tasks consistently to move up faster and unlock better payout opportunities.
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };

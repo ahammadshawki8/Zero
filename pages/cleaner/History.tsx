@@ -1,55 +1,143 @@
-import { useState } from 'react';
-import { Button, Modal } from '../../components/ui';
-import { MOCK_TASKS, MOCK_CLEANER_PROFILE, MOCK_REPORTS } from '../../constants';
-import { Eye, TrendingUp, Banknote, Star, CheckCircle, MessageSquare, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Button, Modal, Toast, Badge } from '../../components/ui';
+import { Eye, TrendingUp, Star, CheckCircle, MessageSquare, Clock } from 'lucide-react';
 import { Task } from '../../types';
 import { AIAnalysisDisplay, CleanupComparisonDisplay } from '../../components/AIAnalysisDisplay';
+import { cleanerAPI } from '../../services/api';
+
+type TaskPaymentMeta = {
+  status: 'PAID' | 'PENDING' | 'UNKNOWN';
+  amount: number;
+  paidAt?: string;
+};
+
+type EarningsTransaction = {
+  task_id?: string;
+  amount?: number;
+  status?: string;
+  paid_at?: string;
+};
 
 export const CleanerHistory = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
+  const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'PAID' | 'PENDING' | 'UNKNOWN'>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [taskPayments, setTaskPayments] = useState<Record<string, TaskPaymentMeta>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
 
-  const profile = MOCK_CLEANER_PROFILE;
-  const completedTasks = MOCK_TASKS.filter(
-    (t) => t.cleanerId === profile.userId && t.status === 'COMPLETED'
-  );
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [tasksData, earningsData] = await Promise.all([
+          cleanerAPI.getCompletedTasks(),
+          cleanerAPI.getEarnings(),
+        ]);
 
-  const totalEarned = completedTasks.reduce((sum, t) => sum + t.reward, 0);
+        const earningsRows = Array.isArray(earningsData)
+          ? (earningsData as EarningsTransaction[])
+          : [];
+
+        const paymentMap: Record<string, TaskPaymentMeta> = {};
+        earningsRows.forEach((row) => {
+          const taskId = row?.task_id;
+          if (!taskId) return;
+          const normalizedStatus = String(row?.status || '').toUpperCase();
+          paymentMap[taskId] = {
+            status: normalizedStatus === 'PAID' ? 'PAID' : normalizedStatus === 'PENDING' ? 'PENDING' : 'UNKNOWN',
+            amount: Number(row?.amount || 0),
+            paidAt: row?.paid_at || undefined,
+          };
+        });
+
+        setCompletedTasks(tasksData);
+        setTaskPayments(paymentMap);
+      } catch (error: any) {
+        console.error('Failed to load history data:', error);
+        setToast({ show: true, message: 'Failed to load history data', type: 'error' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  const getPaymentMeta = (task: Task): TaskPaymentMeta => {
+    const meta = taskPayments[task.id];
+    if (meta) return meta;
+    return {
+      status: 'UNKNOWN',
+      amount: Number(task.reward || 0),
+      paidAt: undefined,
+    };
+  };
+
+  const filteredTasks = completedTasks.filter((task) => {
+    const payment = getPaymentMeta(task);
+    if (paymentFilter !== 'ALL' && payment.status !== paymentFilter) return false;
+    if (!searchTerm.trim()) return true;
+    const query = searchTerm.trim().toLowerCase();
+    return (
+      task.id.toLowerCase().includes(query) ||
+      task.zoneName.toLowerCase().includes(query) ||
+      task.description.toLowerCase().includes(query)
+    );
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading history...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Summary */}
-      <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <p className="text-green-100 text-sm mb-1">Total Earned</p>
-            <div className="flex items-center gap-2">
-              <Banknote size={24} className="sm:w-7 sm:h-7" />
-              <span className="text-2xl sm:text-3xl font-bold">৳{totalEarned.toLocaleString()}</span>
-            </div>
-          </div>
-          <div className="flex gap-4 sm:gap-6">
-            <div className="text-center sm:text-right">
-              <div className="text-xl sm:text-2xl font-bold">{completedTasks.length}</div>
-              <div className="text-xs text-green-100">Completed</div>
-            </div>
-            <div className="text-center sm:text-right">
-              <div className="text-xl sm:text-2xl font-bold flex items-center gap-1">
-                <Star size={14} className="fill-yellow-400 text-yellow-400" />
-                {profile.rating}
-              </div>
-              <div className="text-xs text-green-100">Rating</div>
-            </div>
-          </div>
+    <>
+      <Toast
+        isOpen={toast.show}
+        onClose={() => setToast({ ...toast, show: false })}
+        message={toast.message}
+        type={toast.type}
+      />
+      <div className="space-y-3 sm:space-y-4 md:space-y-6 px-0 sm:px-1">
+      <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by task ID, zone, or description"
+            className="md:col-span-2 rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900"
+          />
+          <select
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value as 'ALL' | 'PAID' | 'PENDING' | 'UNKNOWN')}
+            className="rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-900"
+          >
+            <option value="ALL">All Payments</option>
+            <option value="PAID">Paid</option>
+            <option value="PENDING">Pending Payout</option>
+            <option value="UNKNOWN">Unknown</option>
+          </select>
         </div>
+        <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
+          Showing {filteredTasks.length} of {completedTasks.length} completed task(s)
+        </p>
       </div>
 
       {/* History Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {completedTasks.length === 0 ? (
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        {filteredTasks.length === 0 ? (
           <div className="py-12 text-center text-slate-500">
             <TrendingUp size={48} className="mx-auto mb-3 text-slate-300" />
-            <p className="font-medium">No completed tasks yet</p>
-            <p className="text-sm">Complete tasks to see your history here</p>
+            <p className="font-medium">No matching history found</p>
+            <p className="text-sm">Try adjusting payment filter or search text</p>
           </div>
         ) : (
           <>
@@ -58,7 +146,7 @@ export const CleanerHistory = () => {
               <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                    <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-[10px] sm:text-xs font-medium text-slate-500 uppercase">
                       Task ID
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
@@ -71,33 +159,57 @@ export const CleanerHistory = () => {
                       Earned
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
+                      Payment
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {completedTasks.map((task) => (
+                  {filteredTasks.map((task) => {
+                    const payment = getPaymentMeta(task);
+                    return (
                     <tr key={task.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{task.id}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{task.zoneName}</td>
-                      <td className="px-6 py-4 text-sm text-slate-500">
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-[11px] sm:text-sm font-medium text-slate-900 dark:text-slate-100">{task.id}</td>
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-[11px] sm:text-sm text-slate-600 dark:text-slate-400">{task.zoneName}</td>
+                      <td className="px-3 sm:px-6 py-2 sm:py-4 text-[11px] sm:text-sm text-slate-500 dark:text-slate-400">
                         {task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-green-600">৳{task.reward}</td>
+                      <td className="px-6 py-4 text-sm">
+                        {payment.status === 'PAID' ? (
+                          <div className="space-y-1">
+                            <Badge variant="success">PAID</Badge>
+                            <p className="text-xs text-slate-500">
+                              {payment.paidAt ? `Paid on ${new Date(payment.paidAt).toLocaleDateString()}` : 'Paid'}
+                            </p>
+                          </div>
+                        ) : payment.status === 'PENDING' ? (
+                          <div className="space-y-1">
+                            <Badge variant="warning">PENDING PAYOUT</Badge>
+                            <p className="text-xs text-slate-500">Awaiting admin confirmation</p>
+                          </div>
+                        ) : (
+                          <Badge variant="neutral">UNKNOWN</Badge>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm">
                         <Button size="sm" variant="outline" onClick={() => setSelectedTask(task)}>
                           <Eye size={14} className="mr-1" /> Details
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                  );})}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Cards */}
             <div className="md:hidden divide-y divide-slate-200">
-              {completedTasks.map((task) => (
+              {filteredTasks.map((task) => {
+                const payment = getPaymentMeta(task);
+                return (
                 <div
                   key={task.id}
                   className="p-4 hover:bg-slate-50"
@@ -114,8 +226,17 @@ export const CleanerHistory = () => {
                     <CheckCircle size={12} />
                     {task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'N/A'}
                   </div>
+                  <div className="mt-2">
+                    {payment.status === 'PAID' ? (
+                      <Badge variant="success">PAID</Badge>
+                    ) : payment.status === 'PENDING' ? (
+                      <Badge variant="warning">PENDING PAYOUT</Badge>
+                    ) : (
+                      <Badge variant="neutral">UNKNOWN</Badge>
+                    )}
+                  </div>
                 </div>
-              ))}
+              );})}
             </div>
           </>
         )}
@@ -130,30 +251,54 @@ export const CleanerHistory = () => {
       >
         {selectedTask && (
           <div className="space-y-4">
-            {/* Before/After Images */}
             {(() => {
-              const linkedReport = MOCK_REPORTS.find((r) => r.id === selectedTask.reportId);
-              return linkedReport ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Before</p>
-                    <img
-                      src={linkedReport.imageUrl}
-                      alt="Before"
-                      className="w-full h-32 object-cover rounded-lg border border-slate-200"
-                    />
+              const payment = getPaymentMeta(selectedTask);
+              return (
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 bg-slate-50 dark:bg-slate-800/60">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Payment Status</p>
+                    {payment.status === 'PAID' ? (
+                      <Badge variant="success">PAID</Badge>
+                    ) : payment.status === 'PENDING' ? (
+                      <Badge variant="warning">PENDING PAYOUT</Badge>
+                    ) : (
+                      <Badge variant="neutral">UNKNOWN</Badge>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">After (Your Work)</p>
-                    <img
-                      src={selectedTask.evidenceImageUrl || linkedReport.afterImageUrl}
-                      alt="After"
-                      className="w-full h-32 object-cover rounded-lg border-2 border-green-400"
-                    />
-                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {payment.status === 'PAID'
+                      ? payment.paidAt
+                        ? `Paid by admin on ${new Date(payment.paidAt).toLocaleString()}`
+                        : 'Paid by admin'
+                      : payment.status === 'PENDING'
+                        ? 'Awaiting admin payment confirmation'
+                        : 'Payment state not available'}
+                  </p>
                 </div>
-              ) : null;
+              );
             })()}
+
+            {/* Before/After Images */}
+            {selectedTask.reportId && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Before</p>
+                  <img
+                    src={selectedTask.beforeImageUrl || '/placeholder-image.jpg'}
+                    alt="Before"
+                    className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">After (Your Work)</p>
+                  <img
+                    src={selectedTask.evidenceImageUrl || '/placeholder-image.jpg'}
+                    alt="After"
+                    className="w-full h-32 object-cover rounded-lg border-2 border-green-400"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Task Info */}
             <div className="bg-slate-50 p-3 rounded-lg">
@@ -168,80 +313,69 @@ export const CleanerHistory = () => {
             </div>
 
             {/* AI Analysis */}
-            {(() => {
-              const linkedReport = MOCK_REPORTS.find((r) => r.id === selectedTask.reportId);
-              return linkedReport?.aiAnalysis ? (
-                <AIAnalysisDisplay analysis={linkedReport.aiAnalysis} compact />
-              ) : null;
-            })()}
+            {selectedTask.aiAnalysis && (
+              <AIAnalysisDisplay analysis={selectedTask.aiAnalysis} compact />
+            )}
 
             {/* Cleanup Comparison */}
-            {(() => {
-              const linkedReport = MOCK_REPORTS.find((r) => r.id === selectedTask.reportId);
-              return linkedReport?.cleanupComparison ? (
-                <CleanupComparisonDisplay comparison={linkedReport.cleanupComparison} />
-              ) : null;
-            })()}
+            {selectedTask.cleanupComparison && (
+              <CleanupComparisonDisplay comparison={selectedTask.cleanupComparison} />
+            )}
 
             {/* Citizen Review */}
-            {(() => {
-              const linkedReport = MOCK_REPORTS.find((r) => r.id === selectedTask.reportId);
-              if (!linkedReport?.review) {
-                return (
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center">
-                    <MessageSquare size={24} className="mx-auto mb-2 text-slate-300" />
-                    <p className="text-sm text-slate-500">No citizen review yet</p>
-                    <p className="text-xs text-slate-400">The citizen hasn't reviewed this cleanup</p>
+            {selectedTask.review ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Star size={18} className="text-amber-500" />
+                  <span className="font-semibold text-amber-800">Citizen Review</span>
+                </div>
+                
+                {/* Rating Stars */}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        size={20}
+                        className={`${
+                          star <= selectedTask.review!.rating
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-slate-300'
+                        }`}
+                      />
+                    ))}
                   </div>
-                );
-              }
-              return (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Star size={18} className="text-amber-500" />
-                    <span className="font-semibold text-amber-800">Citizen Review</span>
-                  </div>
-                  
-                  {/* Rating Stars */}
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          size={20}
-                          className={`${
-                            star <= linkedReport.review!.rating
-                              ? 'fill-yellow-400 text-yellow-400'
-                              : 'text-slate-300'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-lg font-bold text-slate-800">
-                      {linkedReport.review.rating}/5
-                    </span>
-                  </div>
+                  <span className="text-lg font-bold text-slate-800">
+                    {selectedTask.review.rating}/5
+                  </span>
+                </div>
 
-                  {/* Comment */}
-                  {linkedReport.review.comment && (
-                    <div className="bg-white rounded-lg p-3 mb-3">
-                      <p className="text-sm text-slate-700 italic">"{linkedReport.review.comment}"</p>
-                    </div>
-                  )}
+                {/* Comment */}
+                {selectedTask.review.comment && (
+                  <div className="bg-white rounded-lg p-3 mb-3">
+                    <p className="text-sm text-slate-700 italic">"{selectedTask.review.comment}"</p>
+                  </div>
+                )}
 
-                  {/* Review Date */}
-                  <div className="flex items-center justify-end text-xs text-slate-500">
-                    <div className="flex items-center gap-1">
-                      <Clock size={12} />
-                      <span>{new Date(linkedReport.review.reviewedAt).toLocaleDateString()}</span>
-                    </div>
+                {/* Review Date */}
+                <div className="flex items-center justify-end text-xs text-slate-500">
+                  <div className="flex items-center gap-1">
+                    <Clock size={12} />
+                    <span>{new Date(selectedTask.review.reviewedAt).toLocaleDateString()}</span>
                   </div>
                 </div>
-              );
-            })()}
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center">
+                <MessageSquare size={24} className="mx-auto mb-2 text-slate-300" />
+                <p className="text-sm text-slate-500">No citizen review yet</p>
+                <p className="text-xs text-slate-400">The citizen hasn't reviewed this cleanup</p>
+              </div>
+            )}
           </div>
         )}
       </Modal>
     </div>
+    </>
   );
 };

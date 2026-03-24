@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Card, Toast } from '../../components/ui';
-import { MOCK_ZONES } from '../../constants';
 import { Zone, LatLng, WasteAnalysis } from '../../types';
 import { ZoneDisplayMap } from '../../components/ZoneMap';
 import { findZoneForPoint } from '../../utils/geo';
+import { sharedAPI, citizenAPI, aiAPI } from '../../services/api';
 import {
   Camera,
   Upload,
@@ -24,6 +25,9 @@ import {
 import { analyzeWasteImage } from '../../services/gemini';
 
 export const ReportWaste = () => {
+  const navigate = useNavigate();
+  const [zones, setZones] = useState<Zone[]>([]);
+  const [isLoadingZones, setIsLoadingZones] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<WasteAnalysis | null>(null);
@@ -41,6 +45,23 @@ export const ReportWaste = () => {
     type: 'success',
   });
 
+  // Load zones on component mount
+  useEffect(() => {
+    const loadZones = async () => {
+      try {
+        const zonesData = await sharedAPI.getZones();
+        setZones(zonesData);
+      } catch (error) {
+        console.error('Failed to load zones:', error);
+        setToast({ show: true, message: 'Failed to load zones', type: 'error' });
+      } finally {
+        setIsLoadingZones(false);
+      }
+    };
+
+    loadZones();
+  }, []);
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -57,16 +78,21 @@ export const ReportWaste = () => {
   const handleAIAnalysis = async () => {
     if (!imagePreview) return;
     setIsAnalyzing(true);
-    const result = await analyzeWasteImage(imagePreview);
-    setIsAnalyzing(false);
-
-    if (result) {
+    
+    try {
+      // Use the AI API instead of the Gemini service directly
+      const result = await aiAPI.analyzeWaste(imagePreview);
       setAiAnalysis(result);
       setFormData((prev) => ({
         ...prev,
         description: result.description,
         severity: result.severity,
       }));
+    } catch (error) {
+      console.error('AI analysis failed:', error);
+      setToast({ show: true, message: 'AI analysis failed. Please try again.', type: 'error' });
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -74,7 +100,7 @@ export const ReportWaste = () => {
     setSelectedPoint(point);
     setLocationError(null);
 
-    const zone = findZoneForPoint(point, MOCK_ZONES);
+    const zone = findZoneForPoint(point, zones);
 
     if (zone) {
       setDetectedZone(zone);
@@ -117,7 +143,7 @@ export const ReportWaste = () => {
     setLocationError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedPoint || !detectedZone) {
@@ -125,40 +151,50 @@ export const ReportWaste = () => {
       return;
     }
 
-    const reportData = {
-      location: { lat: selectedPoint.lat, lng: selectedPoint.lng },
-      zoneId: detectedZone.id,
-      zoneName: detectedZone.name,
-      description: formData.description,
-      severity: formData.severity,
-      imageUrl: imagePreview,
-      aiAnalysis: aiAnalysis,
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      const reportData = {
+        location: { lat: selectedPoint.lat, lng: selectedPoint.lng },
+        zoneId: detectedZone.id,
+        description: formData.description,
+        severity: formData.severity as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
+        imageUrl: imagePreview || undefined,
+        aiAnalysis: aiAnalysis || undefined,
+      };
 
-    console.log('Report submitted:', reportData);
-    setToast({ show: true, message: 'Report submitted successfully!', type: 'success' });
+      await citizenAPI.submitReport(reportData);
+      setToast({ show: true, message: 'Report submitted successfully!', type: 'success' });
 
-    // Reset form
-    setImagePreview(null);
-    setSelectedPoint(null);
-    setDetectedZone(null);
-    setAiAnalysis(null);
-    setFormData({ description: '', severity: 'LOW' });
+      // Reset form
+      setImagePreview(null);
+      setSelectedPoint(null);
+      setDetectedZone(null);
+      setAiAnalysis(null);
+      setFormData({ description: '', severity: 'LOW' });
+
+      // Redirect to reports list after successful submission
+      navigate('/citizen/reports');
+    } catch (error: any) {
+      console.error('Failed to submit report:', error);
+      setToast({ 
+        show: true, 
+        message: error.message || 'Failed to submit report. Please try again.', 
+        type: 'error' 
+      });
+    }
   };
 
   const getImpactColor = (impact: string) => {
     switch (impact) {
       case 'LOW':
-        return 'text-green-600 bg-green-100';
+        return 'text-green-700 bg-green-100 dark:text-green-300 dark:bg-green-900/40';
       case 'MODERATE':
-        return 'text-amber-600 bg-amber-100';
+        return 'text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/40';
       case 'HIGH':
-        return 'text-orange-600 bg-orange-100';
+        return 'text-orange-700 bg-orange-100 dark:text-orange-300 dark:bg-orange-900/40';
       case 'SEVERE':
-        return 'text-red-600 bg-red-100';
+        return 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/40';
       default:
-        return 'text-slate-600 bg-slate-100';
+        return 'text-slate-700 bg-slate-100 dark:text-slate-300 dark:bg-slate-700';
     }
   };
 
@@ -171,9 +207,9 @@ export const ReportWaste = () => {
         message={toast.message}
         type={toast.type}
       />
-      <div className="max-w-3xl mx-auto">
+      <div className="w-full max-w-2xl sm:max-w-3xl mx-auto px-0">
         <Card title="Report Waste Incident" className="border-t-4 border-t-green-500">
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 md:space-y-6">
           {/* Photo Upload */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">Photo Evidence</label>
@@ -225,15 +261,15 @@ export const ReportWaste = () => {
 
           {/* AI Analysis Results */}
           {aiAnalysis && (
-            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 space-y-4">
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 dark:from-slate-800 dark:to-slate-900 dark:border-slate-700 rounded-xl p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Sparkles size={20} className="text-indigo-600" />
-                  <span className="font-semibold text-indigo-800">AI Waste Analysis</span>
+                  <Sparkles size={20} className="text-indigo-600 dark:text-indigo-300" />
+                  <span className="font-semibold text-indigo-800 dark:text-indigo-200">AI Waste Analysis</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <BarChart3 size={14} className="text-indigo-500" />
-                  <span className="text-sm text-indigo-600">
+                  <BarChart3 size={14} className="text-indigo-500 dark:text-indigo-300" />
+                  <span className="text-sm text-indigo-600 dark:text-indigo-300">
                     {aiAnalysis.confidence}% confidence
                   </span>
                 </div>
@@ -241,7 +277,7 @@ export const ReportWaste = () => {
 
               {/* Waste Composition */}
               <div>
-                <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-1">
                   <Trash2 size={14} /> Waste Composition
                 </p>
                 <div className="space-y-2">
@@ -249,15 +285,15 @@ export const ReportWaste = () => {
                     <div key={idx} className="flex items-center gap-3">
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm text-slate-700">{item.type}</span>
+                          <span className="text-sm text-slate-700 dark:text-slate-200">{item.type}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{item.percentage}%</span>
+                            <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{item.percentage}%</span>
                             {item.recyclable && (
                               <Recycle size={14} className="text-green-500" />
                             )}
                           </div>
                         </div>
-                        <div className="w-full bg-slate-200 rounded-full h-2">
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                           <div
                             className={`h-2 rounded-full ${
                               item.recyclable ? 'bg-green-500' : 'bg-slate-400'
@@ -269,30 +305,30 @@ export const ReportWaste = () => {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                <p className="text-xs text-slate-500 dark:text-slate-300 mt-2 flex items-center gap-1">
                   <Recycle size={12} className="text-green-500" /> = Recyclable material
                 </p>
               </div>
 
               {/* Quick Stats Grid */}
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <Trash2 size={18} className="mx-auto text-slate-500 mb-1" />
-                  <p className="text-xs text-slate-500">Volume</p>
-                  <p className="text-sm font-medium text-slate-800">
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-3 text-center">
+                  <Trash2 size={18} className="mx-auto text-slate-500 dark:text-slate-300 mb-1" />
+                  <p className="text-xs text-slate-500 dark:text-slate-300">Volume</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                     {aiAnalysis.estimatedVolume}
                   </p>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <Clock size={18} className="mx-auto text-slate-500 mb-1" />
-                  <p className="text-xs text-slate-500">Cleanup Time</p>
-                  <p className="text-sm font-medium text-slate-800">
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-3 text-center">
+                  <Clock size={18} className="mx-auto text-slate-500 dark:text-slate-300 mb-1" />
+                  <p className="text-xs text-slate-500 dark:text-slate-300">Cleanup Time</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                     {aiAnalysis.estimatedCleanupTime}
                   </p>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <Leaf size={18} className="mx-auto text-slate-500 mb-1" />
-                  <p className="text-xs text-slate-500">Env. Impact</p>
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-3 text-center">
+                  <Leaf size={18} className="mx-auto text-slate-500 dark:text-slate-300 mb-1" />
+                  <p className="text-xs text-slate-500 dark:text-slate-300">Env. Impact</p>
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full ${getImpactColor(
                       aiAnalysis.environmentalImpact
@@ -301,14 +337,14 @@ export const ReportWaste = () => {
                     {aiAnalysis.environmentalImpact}
                   </span>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center">
-                  <Shield size={18} className="mx-auto text-slate-500 mb-1" />
-                  <p className="text-xs text-slate-500">Health Risk</p>
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-3 text-center">
+                  <Shield size={18} className="mx-auto text-slate-500 dark:text-slate-300 mb-1" />
+                  <p className="text-xs text-slate-500 dark:text-slate-300">Health Risk</p>
                   <span
                     className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       aiAnalysis.healthHazard
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-green-100 text-green-600'
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                        : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
                     }`}
                   >
                     {aiAnalysis.healthHazard ? 'Yes' : 'No'}
@@ -318,11 +354,11 @@ export const ReportWaste = () => {
 
               {/* Health Hazard Warning */}
               {aiAnalysis.healthHazard && aiAnalysis.hazardDetails && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-                  <AlertTriangle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
+                <div className="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-800 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle size={18} className="text-red-500 dark:text-red-300 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-red-800">Health Hazard Detected</p>
-                    <p className="text-xs text-red-600">{aiAnalysis.hazardDetails}</p>
+                    <p className="text-sm font-medium text-red-800 dark:text-red-200">Health Hazard Detected</p>
+                    <p className="text-xs text-red-700 dark:text-red-300">{aiAnalysis.hazardDetails}</p>
                   </div>
                 </div>
               )}
@@ -330,14 +366,14 @@ export const ReportWaste = () => {
               {/* Equipment Needed */}
               {aiAnalysis.specialEquipmentNeeded.length > 0 && (
                 <div>
-                  <p className="text-sm font-medium text-slate-700 mb-2 flex items-center gap-1">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2 flex items-center gap-1">
                     <Wrench size={14} /> Equipment Needed
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {aiAnalysis.specialEquipmentNeeded.map((item, idx) => (
                       <span
                         key={idx}
-                        className="text-xs bg-white border border-slate-200 px-2 py-1 rounded-full text-slate-600"
+                        className="text-xs bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-600 px-2 py-1 rounded-full text-slate-600 dark:text-slate-200"
                       >
                         {item}
                       </span>
@@ -347,9 +383,9 @@ export const ReportWaste = () => {
               )}
 
               {/* Recommended Action */}
-              <div className="bg-white rounded-lg p-3">
-                <p className="text-sm font-medium text-slate-700 mb-1">Recommended Action</p>
-                <p className="text-sm text-slate-600">{aiAnalysis.recommendedAction}</p>
+              <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-100 mb-1">Recommended Action</p>
+                <p className="text-sm text-slate-600 dark:text-slate-200">{aiAnalysis.recommendedAction}</p>
               </div>
 
               {/* Re-analyze button */}
@@ -357,7 +393,7 @@ export const ReportWaste = () => {
                 <button
                   type="button"
                   onClick={handleAIAnalysis}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                  className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 flex items-center gap-1"
                 >
                   <Sparkles size={12} /> Re-analyze
                 </button>
@@ -399,12 +435,19 @@ export const ReportWaste = () => {
               detected.
             </p>
 
-            <ZoneDisplayMap
-              zones={MOCK_ZONES}
-              selectedPoint={selectedPoint}
-              onPointSelect={handlePointSelect}
-              height="280px"
-            />
+            {isLoadingZones ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
+                <p className="text-sm text-slate-500">Loading zones...</p>
+              </div>
+            ) : (
+              <ZoneDisplayMap
+                zones={zones}
+                selectedPoint={selectedPoint}
+                onPointSelect={handlePointSelect}
+                height="280px"
+              />
+            )}
 
             {/* Location Status */}
             {selectedPoint && (

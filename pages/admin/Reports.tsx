@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Badge, Button, Input, Modal, Select, Toast } from '../../components/ui';
-import { MOCK_REPORTS, STATUS_INFO } from '../../constants';
+import { adminAPI } from '../../services/api';
 import {
   Eye,
   CheckCircle,
@@ -13,30 +13,67 @@ import {
   Banknote,
 } from 'lucide-react';
 import { Report, Severity } from '../../types';
-import { AIAnalysisDisplay } from '../../components/AIAnalysisDisplay';
+import { AIAnalysisDisplay, CleanupComparisonDisplay } from '../../components/AIAnalysisDisplay';
 
 export const AdminReports = () => {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [aiSuggestedReward, setAiSuggestedReward] = useState<number | null>(null);
+  const [aiSuggestedRange, setAiSuggestedRange] = useState<{ min: number; max: number } | null>(null);
+  const [aiSuggestedConfidence, setAiSuggestedConfidence] = useState<number | null>(null);
+  const [aiSuggestedComponents, setAiSuggestedComponents] = useState<Array<{ label: string; amount: number }>>([]);
+  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [taskReward, setTaskReward] = useState('500');
   const [taskDueDate, setTaskDueDate] = useState('');
   const [declineReason, setDeclineReason] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
-  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({ show: false, message: '', type: 'success' });
-
-  // Filter reports - show SUBMITTED first for approval
-  const filteredReports = MOCK_REPORTS.filter((r) => {
-    if (filterStatus === 'ALL') return true;
-    return r.status === filterStatus;
-  }).sort((a, b) => {
-    // SUBMITTED reports first
-    if (a.status === 'SUBMITTED' && b.status !== 'SUBMITTED') return -1;
-    if (b.status === 'SUBMITTED' && a.status !== 'SUBMITTED') return 1;
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({ 
+    show: false, 
+    message: '', 
+    type: 'success' 
   });
 
-  const pendingCount = MOCK_REPORTS.filter((r) => r.status === 'SUBMITTED').length;
+  // Load reports on component mount and when filter changes
+  useEffect(() => {
+    const loadReports = async () => {
+      try {
+        let reportsData;
+        if (filterStatus === 'SUBMITTED') {
+          reportsData = await adminAPI.getPendingReports();
+        } else {
+          reportsData = await adminAPI.getAllReports();
+        }
+        
+        // Filter reports based on status
+        const filteredReports = filterStatus === 'ALL' 
+          ? reportsData 
+          : reportsData.filter((r: Report) => r.status === filterStatus);
+        
+        // Sort reports - SUBMITTED first
+        const sortedReports = filteredReports.sort((a: Report, b: Report) => {
+          if (a.status === 'SUBMITTED' && b.status !== 'SUBMITTED') return -1;
+          if (b.status === 'SUBMITTED' && a.status !== 'SUBMITTED') return 1;
+          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        });
+        
+        setReports(sortedReports);
+      } catch (error) {
+        console.error('Failed to load reports:', error);
+        setToast({ show: true, message: 'Failed to load reports', type: 'error' });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadReports();
+  }, [filterStatus]);
+
+  const pendingCount = reports.filter((r) => r.status === 'SUBMITTED').length;
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'warning' | 'info' | 'danger' | 'purple' | 'success'> = {
@@ -46,7 +83,7 @@ export const AdminReports = () => {
       IN_PROGRESS: 'purple',
       COMPLETED: 'success',
     };
-    return variants[status] || 'neutral';
+    return variants[status] || 'warning';
   };
 
   const getSeverityBadge = (severity: Severity) => {
@@ -59,36 +96,176 @@ export const AdminReports = () => {
     return variants[severity];
   };
 
-  const handleApprove = () => {
-    setShowCreateTaskModal(true);
+  const handleViewReport = async (report: Report) => {
+    try {
+      const detailedReport = await adminAPI.getReportDetails(report.id);
+      setSelectedReport(detailedReport);
+    } catch (error) {
+      console.error('Failed to load report details:', error);
+      setToast({ show: true, message: 'Failed to load report details', type: 'error' });
+    }
+  };
+
+  const handleApprove = async (reportToApprove?: Report) => {
+    const targetReport = reportToApprove || selectedReport;
+    if (!targetReport) return;
+
+    try {
+      setIsLoadingSuggestion(true);
+
+      const detailedReport = await adminAPI.getReportDetails(targetReport.id);
+      setSelectedReport(detailedReport);
+
+      const fallbackReward = suggestedReward(detailedReport.severity);
+      let finalSuggestedReward = fallbackReward;
+      setAiSuggestedRange(null);
+      setAiSuggestedConfidence(null);
+      setAiSuggestedComponents([]);
+
+      try {
+        const suggestion = await adminAPI.getRewardSuggestion(targetReport.id);
+        if (suggestion?.suggested_reward) {
+          finalSuggestedReward = Number(suggestion.suggested_reward);
+          setAiSuggestedReward(finalSuggestedReward);
+          if (suggestion.range_min != null && suggestion.range_max != null) {
+            setAiSuggestedRange({ min: Number(suggestion.range_min), max: Number(suggestion.range_max) });
+          }
+          if (suggestion.confidence != null) {
+            setAiSuggestedConfidence(Number(suggestion.confidence));
+          }
+          if (Array.isArray(suggestion.pricing_components)) {
+            setAiSuggestedComponents(
+              suggestion.pricing_components.map((c: any) => ({
+                label: c.label || 'Pricing factor',
+                amount: Number(c.amount || 0),
+              }))
+            );
+          }
+        } else {
+          setAiSuggestedReward(fallbackReward);
+        }
+      } catch (suggestionError) {
+        console.warn('Failed to get AI reward suggestion, using fallback:', suggestionError);
+        setAiSuggestedReward(fallbackReward);
+      }
+
+      setTaskReward(finalSuggestedReward.toString());
+      setTaskDueDate(getDefaultDueDate());
+      setShowCreateTaskModal(true);
+    } catch (error) {
+      console.error('Failed to prepare approval modal:', error);
+      setToast({ show: true, message: 'Failed to load report details for approval', type: 'error' });
+    } finally {
+      setIsLoadingSuggestion(false);
+    }
   };
 
   const handleDecline = () => {
     setShowDeclineModal(true);
   };
 
-  const handleCreateTask = () => {
-    console.log('Task created:', {
-      reportId: selectedReport?.id,
-      reward: taskReward,
-      dueDate: taskDueDate,
-    });
-    setToast({ show: true, message: `Task created for Report ${selectedReport?.id} with reward ৳${taskReward} BDT`, type: 'success' });
-    setShowCreateTaskModal(false);
-    setSelectedReport(null);
-    setTaskReward('500');
-    setTaskDueDate('');
+  const handleReopen = (report: Report) => {
+    setSelectedReport(report);
+    setShowReopenModal(true);
   };
 
-  const handleConfirmDecline = () => {
-    console.log('Report declined:', {
-      reportId: selectedReport?.id,
-      reason: declineReason,
-    });
-    setToast({ show: true, message: `Report ${selectedReport?.id} has been declined.`, type: 'warning' });
-    setShowDeclineModal(false);
-    setSelectedReport(null);
-    setDeclineReason('');
+  const handleCreateTask = async () => {
+    if (!selectedReport) return;
+    
+    setIsProcessing(true);
+    try {
+      await adminAPI.approveReport(selectedReport.id, {
+        reward: parseInt(taskReward),
+        dueDate: taskDueDate,
+      });
+      
+      // Update the report in local state
+      setReports(reports.map(r => 
+        r.id === selectedReport.id 
+          ? { ...r, status: 'APPROVED' as const }
+          : r
+      ));
+      
+      setToast({ 
+        show: true, 
+        message: `Report approved and task created with reward ৳${taskReward} BDT`, 
+        type: 'success' 
+      });
+      
+      setShowCreateTaskModal(false);
+      setSelectedReport(null);
+      setAiSuggestedReward(null);
+      setAiSuggestedRange(null);
+      setAiSuggestedConfidence(null);
+      setAiSuggestedComponents([]);
+      setTaskReward('500');
+      setTaskDueDate('');
+    } catch (error) {
+      console.error('Failed to approve report:', error);
+      setToast({ show: true, message: 'Failed to approve report', type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConfirmDecline = async () => {
+    if (!selectedReport) return;
+    
+    setIsProcessing(true);
+    try {
+      await adminAPI.declineReport(selectedReport.id, declineReason);
+      
+      // Update the report in local state
+      setReports(reports.map(r => 
+        r.id === selectedReport.id 
+          ? { ...r, status: 'DECLINED' as const }
+          : r
+      ));
+      
+      setToast({ 
+        show: true, 
+        message: `Report ${selectedReport.id.slice(-8)} has been declined`, 
+        type: 'warning' 
+      });
+      
+      setShowDeclineModal(false);
+      setSelectedReport(null);
+      setDeclineReason('');
+    } catch (error) {
+      console.error('Failed to decline report:', error);
+      setToast({ show: true, message: 'Failed to decline report', type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleConfirmReopen = async () => {
+    if (!selectedReport) return;
+
+    setIsProcessing(true);
+    try {
+      await adminAPI.reopenReport(selectedReport.id);
+
+      setReports(reports.map(r =>
+        r.id === selectedReport.id
+          ? { ...r, status: 'SUBMITTED' as const }
+          : r
+      ));
+
+      setToast({
+        show: true,
+        message: `Report ${selectedReport.id.slice(-8)} moved back to pending review`,
+        type: 'info'
+      });
+
+      setShowReopenModal(false);
+      setSelectedReport(null);
+    } catch (error) {
+      console.error('Failed to reopen report:', error);
+      setToast({ show: true, message: 'Failed to move report back to pending', type: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const suggestedReward = (severity: Severity) => {
@@ -101,251 +278,287 @@ export const AdminReports = () => {
     return rewards[severity];
   };
 
+  const getDefaultDueDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 7); // 7 days from now
+    return date.toISOString().split('T')[0];
+  };
+
+  const closeCreateTaskModal = () => {
+    setShowCreateTaskModal(false);
+    setAiSuggestedReward(null);
+    setAiSuggestedRange(null);
+    setAiSuggestedConfidence(null);
+    setAiSuggestedComponents([]);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <>
+    <div className="space-y-6">
       <Toast
         isOpen={toast.show}
         onClose={() => setToast({ ...toast, show: false })}
         message={toast.message}
         type={toast.type}
       />
-      <div className="space-y-6">
-        {/* Stats Header */}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Report Management</h1>
+          <p className="text-slate-600">Review and approve citizen waste reports</p>
+        </div>
         {pendingCount > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
-            <div className="p-2 bg-amber-100 rounded-lg">
-              <Clock size={24} className="text-amber-600" />
-            </div>
-            <div>
-              <p className="font-semibold text-amber-800">
-                {pendingCount} Report{pendingCount > 1 ? 's' : ''} Pending Approval
-              </p>
-              <p className="text-sm text-amber-600">
-                Approve and create tasks for submitted reports
-              </p>
-            </div>
+          <div className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-800 rounded-lg">
+            <AlertTriangle size={16} />
+            <span className="font-medium">{pendingCount} reports pending review</span>
           </div>
         )}
+      </div>
 
-        <Card title="Citizen Reports">
-          <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
-            <Input placeholder="Search reports..." className="w-full sm:w-64" />
-            <Select
-              options={[
-                { value: 'ALL', label: 'All Status' },
-                { value: 'SUBMITTED', label: 'Pending Approval' },
-                { value: 'APPROVED', label: 'Approved' },
-                { value: 'IN_PROGRESS', label: 'In Progress' },
-                { value: 'COMPLETED', label: 'Completed' },
-                { value: 'DECLINED', label: 'Declined' },
-              ]}
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full sm:w-48"
-            />
+      {/* Filters */}
+      <Card>
+        <div className="flex flex-wrap gap-2">
+          {['ALL', 'SUBMITTED', 'APPROVED', 'DECLINED', 'IN_PROGRESS', 'COMPLETED'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                filterStatus === status
+                  ? 'bg-green-500 text-white shadow-md'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {status === 'ALL' ? 'All Reports' : status.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+      </Card>
+
+      {/* Reports List */}
+      {reports.length === 0 ? (
+        <Card>
+          <div className="text-center py-12">
+            <AlertTriangle size={48} className="mx-auto mb-4 text-slate-300" />
+            <h3 className="text-lg font-medium text-slate-900 mb-2">No reports found</h3>
+            <p className="text-slate-500">No reports match the current filter criteria</p>
           </div>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {reports.map((report) => (
+            <Card key={report.id} className="hover:shadow-md transition-shadow">
+              <div className="flex flex-col lg:flex-row gap-4">
+                {/* Report Image */}
+                {report.imageUrl && (
+                  <div className="lg:w-32 lg:h-32 w-full h-48 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <img
+                      src={report.imageUrl}
+                      alt="Waste report"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
 
-          {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">Report ID</th>
-                  <th className="px-4 py-3">Submitted By</th>
-                  <th className="px-4 py-3">Zone</th>
-                  <th className="px-4 py-3">Severity</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredReports.map((report) => (
-                  <tr
-                    key={report.id}
-                    className={report.status === 'SUBMITTED' ? 'bg-amber-50/50' : ''}
-                  >
-                    <td className="px-4 py-4 font-medium">{report.id}</td>
-                    <td className="px-4 py-4">{report.userName}</td>
-                    <td className="px-4 py-4">{report.zoneName}</td>
-                    <td className="px-4 py-4">
+                {/* Report Details */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-2 mb-3">
+                    <div>
+                      <h3 className="font-semibold text-slate-900">
+                        Report #{report.id.slice(-8)}
+                      </h3>
+                      <p className="text-sm text-slate-500 flex items-center gap-1">
+                        <User size={12} />
+                        {report.userName} • {report.zoneName}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getStatusBadge(report.status)}>
+                        {report.status.replace('_', ' ')}
+                      </Badge>
                       <Badge variant={getSeverityBadge(report.severity)}>
                         {report.severity}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-4">
-                      <Badge variant={getStatusBadge(report.status) as any}>
-                        {STATUS_INFO[report.status]?.label || report.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-4 text-slate-500">
-                      {new Date(report.timestamp).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-4 text-right">
+                    </div>
+                  </div>
+
+                  <p className="text-slate-700 text-sm mb-3 line-clamp-2">{report.description}</p>
+
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={12} />
+                        {new Date(report.timestamp).toLocaleDateString()}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <MapPin size={12} />
+                        {report.location ? `${report.location.lat.toFixed(4)}, ${report.location.lng.toFixed(4)}` : 'Location not available'}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
                       <Button
+                        variant="outline"
                         size="sm"
-                        variant={report.status === 'SUBMITTED' ? 'primary' : 'outline'}
-                        onClick={() => setSelectedReport(report)}
+                        onClick={() => handleViewReport(report)}
                       >
                         <Eye size={14} className="mr-1" />
-                        {report.status === 'SUBMITTED' ? 'Approve' : 'View'}
+                        View Details
                       </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="md:hidden space-y-4">
-            {filteredReports.map((report) => (
-              <div
-                key={report.id}
-                className={`p-4 rounded-xl border ${
-                  report.status === 'SUBMITTED'
-                    ? 'bg-amber-50 border-amber-200'
-                    : 'bg-white border-slate-200'
-                }`}
-                onClick={() => setSelectedReport(report)}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="font-semibold">{report.id}</span>
-                    <p className="text-sm text-slate-500">{report.userName}</p>
+                      {report.status === 'SUBMITTED' && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setSelectedReport(report);
+                              handleApprove(report);
+                            }}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CheckCircle size={14} className="mr-1" />
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedReport(report);
+                              handleDecline();
+                            }}
+                            className="border-red-300 text-red-600 hover:bg-red-50"
+                          >
+                            <XCircle size={14} className="mr-1" />
+                            Decline
+                          </Button>
+                        </>
+                      )}
+                      {report.status === 'DECLINED' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReopen(report)}
+                          className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                        >
+                          <Clock size={14} className="mr-1" />
+                          Move to Pending
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <Badge variant={getStatusBadge(report.status) as any}>
-                    {STATUS_INFO[report.status]?.label}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-4 text-sm text-slate-500">
-                  <span className="flex items-center gap-1">
-                    <MapPin size={12} /> {report.zoneName}
-                  </span>
-                  <Badge variant={getSeverityBadge(report.severity)} >
-                    {report.severity}
-                  </Badge>
                 </div>
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {/* Report Detail Modal */}
+      {/* Report Details Modal */}
       <Modal
-        isOpen={!!selectedReport && !showCreateTaskModal && !showDeclineModal}
+        isOpen={!!selectedReport && !showCreateTaskModal && !showDeclineModal && !showReopenModal}
         onClose={() => setSelectedReport(null)}
-        title={`Report: ${selectedReport?.id}`}
-        footer={
-          selectedReport?.status === 'SUBMITTED' ? (
-            <div className="flex gap-2 w-full">
-              <Button variant="danger" onClick={handleDecline} className="flex-1">
-                <XCircle size={16} className="mr-1" /> Decline
-              </Button>
-              <Button onClick={handleApprove} className="flex-1">
-                <CheckCircle size={16} className="mr-1" /> Approve & Create Task
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={() => setSelectedReport(null)}>Close</Button>
-          )
-        }
+        title={`Report #${selectedReport?.id.slice(-8)}`}
       >
         {selectedReport && (
-          <div className="space-y-4">
-            {/* Image */}
-            {selectedReport.imageUrl && (
-              <img
-                src={selectedReport.imageUrl}
-                alt="Report evidence"
-                className="w-full h-48 object-cover rounded-lg"
-              />
-            )}
-
-            {/* Status */}
-            <div
-              className={`p-3 rounded-lg flex items-center gap-2 ${
-                selectedReport.status === 'SUBMITTED'
-                  ? 'bg-amber-50 text-amber-800'
-                  : selectedReport.status === 'DECLINED'
-                  ? 'bg-red-50 text-red-800'
-                  : 'bg-green-50 text-green-800'
-              }`}
-            >
-              {selectedReport.status === 'SUBMITTED' ? (
-                <Clock size={18} />
-              ) : selectedReport.status === 'DECLINED' ? (
-                <XCircle size={18} />
-              ) : (
-                <CheckCircle size={18} />
-              )}
-              <span className="font-medium">
-                {STATUS_INFO[selectedReport.status]?.label} -{' '}
-                {STATUS_INFO[selectedReport.status]?.description}
-              </span>
-            </div>
-
-            {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <User size={16} className="text-slate-400" />
-                <div>
-                  <p className="text-slate-500">Submitted By</p>
-                  <p className="font-medium">{selectedReport.userName}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-slate-400" />
-                <div>
-                  <p className="text-slate-500">Zone</p>
-                  <p className="font-medium">{selectedReport.zoneName}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={16} className="text-slate-400" />
-                <div>
-                  <p className="text-slate-500">Severity</p>
+        <div className="space-y-3 sm:space-y-4 md:space-y-6">
+            {/* Status and Basic Info */}
+            <div className="flex justify-between items-start">
+              <div>
+                <Badge variant={getStatusBadge(selectedReport.status)}>
+                  {selectedReport.status.replace('_', ' ')}
+                </Badge>
+                <div className="ml-2">
                   <Badge variant={getSeverityBadge(selectedReport.severity)}>
                     {selectedReport.severity}
                   </Badge>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Calendar size={16} className="text-slate-400" />
-                <div>
-                  <p className="text-slate-500">Reported</p>
-                  <p className="font-medium">
-                    {new Date(selectedReport.timestamp).toLocaleDateString()}
-                  </p>
-                </div>
+              <div className="text-right text-sm text-slate-500">
+                <div>Reported by: {selectedReport.userName}</div>
+                <div>{new Date(selectedReport.timestamp).toLocaleString()}</div>
               </div>
             </div>
 
-            {/* Description */}
-            <div>
-              <p className="text-sm text-slate-500 mb-1">Description</p>
-              <p className="bg-slate-50 p-3 rounded-lg text-sm">
-                {selectedReport.description}
-              </p>
+            {/* Report Image */}
+            {selectedReport.imageUrl && (
+              <div className="w-full h-64 bg-slate-100 rounded-lg overflow-hidden">
+                <img
+                  src={selectedReport.imageUrl}
+                  alt="Waste report"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )}
+
+            {/* Report Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium text-slate-900 mb-2">Location Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div><span className="text-slate-500">Zone:</span> {selectedReport.zoneName}</div>
+                  <div><span className="text-slate-500">Coordinates:</span> {selectedReport.location ? `${selectedReport.location.lat.toFixed(6)}, ${selectedReport.location.lng.toFixed(6)}` : 'Not available'}</div>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium text-slate-900 mb-2">Description</h4>
+                <p className="text-sm text-slate-700">{selectedReport.description}</p>
+              </div>
             </div>
 
             {/* AI Analysis */}
             {selectedReport.aiAnalysis && (
-              <AIAnalysisDisplay analysis={selectedReport.aiAnalysis} />
+              <div>
+                <h4 className="font-medium text-slate-900 mb-3">AI Analysis</h4>
+                <AIAnalysisDisplay analysis={selectedReport.aiAnalysis} />
+              </div>
             )}
 
-            {/* Suggested Reward for SUBMITTED */}
+            {selectedReport.cleanupComparison && (
+              <div>
+                <h4 className="font-medium text-slate-900 mb-3">Cleanup Verification Report (AI Before vs After)</h4>
+                <CleanupComparisonDisplay comparison={selectedReport.cleanupComparison} />
+              </div>
+            )}
+
+            {/* Action Buttons */}
             {selectedReport.status === 'SUBMITTED' && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Banknote size={18} className="text-blue-600" />
-                  <span className="text-sm text-blue-800">Suggested Task Reward</span>
-                </div>
-                <span className="font-bold text-blue-800">
-                  ৳{suggestedReward(selectedReport.severity)} BDT
-                </span>
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  onClick={() => handleApprove(selectedReport)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle size={16} className="mr-2" />
+                  Approve & Create Task
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDecline}
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                >
+                  <XCircle size={16} className="mr-2" />
+                  Decline Report
+                </Button>
+              </div>
+            )}
+            {selectedReport.status === 'DECLINED' && (
+              <div className="flex gap-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => handleReopen(selectedReport)}
+                  className="border-amber-300 text-amber-700 hover:bg-amber-50"
+                >
+                  <Clock size={16} className="mr-2" />
+                  Move Back to Pending
+                </Button>
               </div>
             )}
           </div>
@@ -355,43 +568,85 @@ export const AdminReports = () => {
       {/* Create Task Modal */}
       <Modal
         isOpen={showCreateTaskModal}
-        onClose={() => setShowCreateTaskModal(false)}
+        onClose={closeCreateTaskModal}
         title="Create Cleanup Task"
         footer={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowCreateTaskModal(false)}>
+            <Button variant="outline" onClick={closeCreateTaskModal}>
               Cancel
             </Button>
-            <Button onClick={handleCreateTask} disabled={!taskReward || !taskDueDate}>
-              Create Task
+            <Button 
+              onClick={handleCreateTask}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Creating...' : 'Create Task'}
             </Button>
           </div>
         }
       >
         <div className="space-y-4">
           <div className="bg-slate-50 p-4 rounded-lg">
-            <p className="text-sm text-slate-500">Creating task for</p>
-            <p className="font-semibold">{selectedReport?.id} - {selectedReport?.zoneName}</p>
-            <p className="text-sm text-slate-600 mt-1">{selectedReport?.description}</p>
+            <h4 className="font-medium text-slate-900 mb-2">Report Summary</h4>
+            <p className="text-sm text-slate-600">{selectedReport?.description}</p>
+            <div className="mt-2 text-xs text-slate-500">
+              Zone: {selectedReport?.zoneName} • Severity: {selectedReport?.severity}
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Task Reward (BDT)
             </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">৳</span>
-              <Input
-                type="number"
-                value={taskReward}
-                onChange={(e) => setTaskReward(e.target.value)}
-                className="pl-8"
-                placeholder="Enter reward amount"
-              />
+            <Input
+              type="number"
+              value={taskReward}
+              onChange={(e) => setTaskReward(e.target.value)}
+              placeholder="Enter reward amount"
+            />
+
+            <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold text-emerald-800">
+                  AI + Local Market Suggested: ৳{(aiSuggestedReward ?? (selectedReport ? suggestedReward(selectedReport.severity) : 500)).toLocaleString()} BDT
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setTaskReward(String(aiSuggestedReward ?? (selectedReport ? suggestedReward(selectedReport.severity) : 500)))}
+                  className="border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                >
+                  Use Suggested
+                </Button>
+              </div>
+
+              {aiSuggestedRange && (
+                <p className="text-[11px] text-emerald-700 mt-1">
+                  Suggested range: ৳{aiSuggestedRange.min.toLocaleString()} - ৳{aiSuggestedRange.max.toLocaleString()}
+                </p>
+              )}
+              {aiSuggestedConfidence !== null && (
+                <p className="text-[11px] text-emerald-700 mt-0.5">
+                  Confidence: {aiSuggestedConfidence}%
+                </p>
+              )}
+              {isLoadingSuggestion && (
+                <p className="text-[11px] text-emerald-700 mt-0.5">Calculating suggestion...</p>
+              )}
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Suggested: ৳{selectedReport ? suggestedReward(selectedReport.severity) : 500} based on severity
-            </p>
+
+            {aiSuggestedComponents.length > 0 && (
+              <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+                <p className="text-[11px] font-semibold text-slate-700 mb-1">Pricing basis</p>
+                <div className="space-y-1 max-h-24 overflow-y-auto">
+                  {aiSuggestedComponents.slice(0, 6).map((component, idx) => (
+                    <div key={`${component.label}-${idx}`} className="flex items-center justify-between text-[11px] text-slate-600">
+                      <span className="truncate pr-2">{component.label}</span>
+                      <span>৳{Number(component.amount).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -402,15 +657,7 @@ export const AdminReports = () => {
               type="date"
               value={taskDueDate}
               onChange={(e) => setTaskDueDate(e.target.value)}
-              min={new Date().toISOString().split('T')[0]}
             />
-          </div>
-
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <p className="text-sm text-green-800">
-              <strong>Note:</strong> Once created, this task will be visible to all cleaners.
-              The first cleaner to take it will be assigned.
-            </p>
           </div>
         </div>
       </Modal>
@@ -425,37 +672,75 @@ export const AdminReports = () => {
             <Button variant="outline" onClick={() => setShowDeclineModal(false)}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleConfirmDecline}>
-              Confirm Decline
+            <Button 
+              onClick={handleConfirmDecline}
+              disabled={isProcessing}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isProcessing ? 'Declining...' : 'Decline Report'}
             </Button>
           </div>
         }
       >
         <div className="space-y-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
-            <XCircle size={18} className="text-red-600 mt-0.5" />
-            <div>
-              <p className="font-medium text-red-800">Declining Report {selectedReport?.id}</p>
-              <p className="text-sm text-red-600">
-                The citizen will be notified that their report was declined.
-              </p>
-            </div>
+          <div className="text-center py-4">
+            <XCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Decline this report?</h3>
+            <p className="text-slate-500 text-sm">
+              Please provide a reason for declining this report. The citizen will be notified.
+            </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Reason for Declining (Optional)
+              Reason for Decline
             </label>
             <textarea
-              rows={3}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
-              placeholder="e.g., Duplicate report, insufficient evidence, outside service area..."
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="Explain why this report is being declined..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+              rows={3}
+              required
             />
           </div>
         </div>
       </Modal>
-    </>
+
+      {/* Reopen Modal */}
+      <Modal
+        isOpen={showReopenModal}
+        onClose={() => setShowReopenModal(false)}
+        title="Move Report Back to Pending"
+        footer={
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowReopenModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmReopen}
+              disabled={isProcessing}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isProcessing ? 'Moving...' : 'Move to Pending'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div className="text-center py-4">
+            <Clock className="w-16 h-16 mx-auto mb-4 text-amber-500" />
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Reopen this declined report?</h3>
+            <p className="text-slate-500 text-sm">
+              This will move the report back to pending review so it can be approved or declined again.
+            </p>
+          </div>
+
+          <div className="p-3 bg-amber-50 rounded-lg text-sm text-amber-800">
+            Report: #{selectedReport?.id.slice(-8)}
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
 };

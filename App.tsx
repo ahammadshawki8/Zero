@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { UserRole } from './types';
+import React from 'react';
+import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { IntroSplash } from './components/IntroSplash';
 import { AuthPage } from './pages/Auth';
 import { LandingPage } from './pages/Landing';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Citizen Pages
 import { ReportWaste } from './pages/citizen/ReportWaste';
@@ -19,6 +20,7 @@ import { MyTasks } from './pages/cleaner/MyTasks';
 import { CleanerHistory } from './pages/cleaner/History';
 import { CleanerLeaderboard } from './pages/cleaner/Leaderboard';
 import { CleanerProfile } from './pages/cleaner/Profile';
+import { CleanerPayments } from './pages/cleaner/Payments';
 
 // Admin Pages
 import { AdminDashboard } from './pages/admin/Dashboard';
@@ -26,54 +28,76 @@ import { AdminZones } from './pages/admin/Zones';
 import { AdminTasks } from './pages/admin/Tasks';
 import { AdminReports } from './pages/admin/Reports';
 import { AdminProfile } from './pages/admin/Profile';
+import { AdminPayments } from './pages/admin/Payments';
 
 
-const App = () => {
-  const [showLanding, setShowLanding] = useState(true);
-  const [user, setUser] = useState<{ role: UserRole; isAuthenticated: boolean }>({
-    role: 'CITIZEN',
-    isAuthenticated: false,
+// Landing page wrapper to use navigation
+const LandingPageWrapper = () => {
+  const navigate = useNavigate();
+  return <LandingPage onGetStarted={() => navigate('/auth')} />;
+};
+
+const IntroGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const location = useLocation();
+  const [isIntroDone, setIsIntroDone] = React.useState<boolean>(() => {
+    return sessionStorage.getItem('zero_intro_seen') === '1';
   });
 
-  const handleLogin = (role: UserRole) => {
-    setUser({ role, isAuthenticated: true });
-  };
+  const isLandingRoute = location.pathname === '/' || location.pathname === '';
 
-  const handleLogout = () => {
-    setUser({ role: 'CITIZEN', isAuthenticated: false });
-    setShowLanding(true);
-  };
+  const completeIntro = React.useCallback(() => {
+    sessionStorage.setItem('zero_intro_seen', '1');
+    setIsIntroDone(true);
+  }, []);
 
-  if (showLanding && !user.isAuthenticated) {
+  if (!isLandingRoute || isIntroDone) {
+    return <>{children}</>;
+  }
+
+  return <IntroSplash onDone={completeIntro} durationMs={6500} />;
+};
+
+const AppContent = () => {
+  const { user, isLoading, isAuthenticated, logout } = useAuth();
+
+  if (isLoading) {
     return (
-      <ThemeProvider>
-        <LandingPage onGetStarted={() => setShowLanding(false)} />
-      </ThemeProvider>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
     );
   }
 
-  if (!user.isAuthenticated) {
+  if (!isAuthenticated) {
     return (
-      <ThemeProvider>
-        <AuthPage onLogin={handleLogin} />
-      </ThemeProvider>
+      <HashRouter>
+        <IntroGate>
+          <Routes>
+            <Route path="/" element={<LandingPageWrapper />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </IntroGate>
+      </HashRouter>
     );
   }
 
   return (
-    <ThemeProvider>
     <HashRouter>
-      <Layout userRole={user.role} onLogout={handleLogout}>
+      <Layout userRole={user!.role} onLogout={logout}>
         <Routes>
           {/* Redirect root based on role */}
           <Route path="/" element={
-            user.role === 'ADMIN' ? <Navigate to="/admin/dashboard" /> :
-            user.role === 'CLEANER' ? <Navigate to="/cleaner/available" /> :
+            user!.role === 'ADMIN' ? <Navigate to="/admin/dashboard" /> :
+            user!.role === 'CLEANER' ? <Navigate to="/cleaner/available" /> :
             <Navigate to="/citizen/report" />
           } />
 
           {/* Citizen Routes */}
-          {user.role === 'CITIZEN' && (
+          {user!.role === 'CITIZEN' && (
             <>
               <Route path="/citizen/report" element={<ReportWaste />} />
               <Route path="/citizen/reports" element={<MyReports />} />
@@ -84,23 +108,25 @@ const App = () => {
           )}
 
           {/* Cleaner Routes */}
-          {user.role === 'CLEANER' && (
+          {user!.role === 'CLEANER' && (
             <>
               <Route path="/cleaner/available" element={<AvailableTasks />} />
               <Route path="/cleaner/tasks" element={<MyTasks />} />
               <Route path="/cleaner/history" element={<CleanerHistory />} />
+              <Route path="/cleaner/payments" element={<CleanerPayments />} />
               <Route path="/cleaner/leaderboard" element={<CleanerLeaderboard />} />
               <Route path="/cleaner/profile" element={<CleanerProfile />} />
             </>
           )}
 
           {/* Admin Routes */}
-          {user.role === 'ADMIN' && (
+          {user!.role === 'ADMIN' && (
             <>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/zones" element={<AdminZones />} />
               <Route path="/admin/tasks" element={<AdminTasks />} />
               <Route path="/admin/reports" element={<AdminReports />} />
+              <Route path="/admin/payments" element={<AdminPayments />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
             </>
           )}
@@ -110,6 +136,15 @@ const App = () => {
         </Routes>
       </Layout>
     </HashRouter>
+  );
+};
+
+const App = () => {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ThemeProvider>
   );
 };

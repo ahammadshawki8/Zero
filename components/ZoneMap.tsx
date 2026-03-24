@@ -89,15 +89,16 @@ export const ZoneDisplayMap: React.FC<ZoneDisplayMapProps> = ({
         />
 
         {/* Zone polygons */}
-        {zones.map((zone) => (
-          <Polygon
-            key={zone.id}
-            positions={zone.polygon.map((p) => [p.lat, p.lng] as [number, number])}
-            pathOptions={{
-              color: zone.color || '#3b82f6',
-              fillColor: zone.color || '#3b82f6',
-              fillOpacity: 0.25,
-              weight: 3,
+        {zones && zones.length > 0 && zones.map((zone) => (
+          zone.polygon && zone.polygon.length > 0 ? (
+            <Polygon
+              key={zone.id}
+              positions={zone.polygon.map((p) => [p.lat, p.lng] as [number, number])}
+              pathOptions={{
+                color: zone.color || '#3b82f6',
+                fillColor: zone.color || '#3b82f6',
+                fillOpacity: 0.25,
+                weight: 3,
             }}
             eventHandlers={
               onPointSelect
@@ -142,6 +143,7 @@ export const ZoneDisplayMap: React.FC<ZoneDisplayMapProps> = ({
               </Popup>
             )}
           </Polygon>
+          ) : null
         ))}
 
         {/* Selected location marker */}
@@ -163,7 +165,7 @@ export const ZoneDisplayMap: React.FC<ZoneDisplayMapProps> = ({
       </MapContainer>
 
       {/* Floating zone legend */}
-      {zones.length > 0 && (
+      {zones && zones.length > 0 && (
         <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 z-[1000] max-w-[200px]">
           <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Zones</div>
           <div className="space-y-1.5">
