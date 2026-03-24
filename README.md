@@ -1,326 +1,169 @@
-# 🌱 Zero - Smart Waste Management Platform
+﻿# Zero Frontend — Smart Waste Management UI
 
-<br>
-
-<div align="center">
-
-![Zero Waste Logo](https://img.shields.io/badge/Zero-Waste-22c55e?style=for-the-badge&logo=recycle&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss)
-![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite)
-
-**A gamified waste management platform connecting citizens, cleaners, and administrators to build cleaner communities.**
-
-[Features](#-features) • [Getting Started](#-getting-started) • [User Roles](#-user-roles) • [Tech Stack](#-tech-stack) • [Team](#-team)
-
-</div>
+A React 18 + TypeScript + Vite single-page application enabling citizens, cleaners, admins, and superadmins to participate in a collaborative smart waste management platform. **AI-powered waste analysis, real-time zone-based mapping, gamification, payment tracking, and leaderboards** drive engagement across roles.
 
 ---
 
-## 📖 Overview
+## Technology Stack
 
-Zero is a comprehensive waste management solution designed for urban areas, specifically tailored for Dhaka, Bangladesh. The platform enables citizens to report waste issues, administrators to manage cleanup operations, and cleaners to earn rewards by completing cleanup tasks.
+- **React** 18 (component-based UI, hooks)
+- **TypeScript** 5 (type safety across all components)
+- **Vite** 6 (ultra-fast dev/build, instant HMR)
+- **React Router** 6 (client-side routing with hash-based URLs)
+- **Leaflet + React Leaflet** (interactive maps with zone polygon visualization)
+- **Recharts** (data visualization: pie, bar, line charts)
+- **Lucide React** (consistent icon library, 400+ icons)
+- **Tailwind CSS** (utility-first styling, full dark mode support via dark: prefix)
+- **Context API** (state management: auth user, theme preference)
 
-The system uses AI-powered waste analysis (Google Gemini) to automatically detect waste types, estimate quantities, and suggest appropriate cleanup methods.
+## 🎯 Features by Role
 
-## ✨ Features
+### CITIZEN: Report → Review → Earn
+Citizens report waste via photo, AI analyzes, location auto-detected on map, admin approves & rewards points, cleaner cleans, citizen reviews cleanup quality and earns additional points for participation.
 
-### 🗺️ Zone-Based Management
-- Interactive map with polygon-based zone definitions
-- Real-time zone detection using ray-casting algorithm
-- Cleanliness scores per zone
-- Visual zone boundaries with custom colors
+**Key Workflows**:
+1. **ReportWaste**: Photo upload → optional AI analysis → zone selection (GPS with point-in-polygon check) → severity selection → submit 
+2. **MyReports**: Filterable list by status (SUBMITTED/APPROVED/IN_PROGRESS/COMPLETED/DECLINED), edit (SUBMITTED only), delete (SUBMITTED only), view details with AI analysis & before/after cleanup images
+3. **MyReviews**: Rate cleanup quality (1-5 stars) + optional comment, see before/after AI comparison, earn +5 bonus points per review
+4. **Leaderboard**: All-time/month/week rankings by green points earned
+5. **Profile**: View/edit personal info, stats (points/reports/streak/rank/badges), notification prefs, password change, data download, account deletion
 
-### 📸 Smart Waste Reporting
-- Photo-based waste reporting with location selection
-- AI-powered waste analysis (type detection, severity assessment, cleanup recommendations)
-- Automatic zone detection from map coordinates
-- Report status tracking (Submitted → Approved → In Progress → Completed)
+### CLEANER: Claim → Complete → Earn
+Cleaners browse available tasks filtered by zone/priority, claim tasks, upload completion evidence photos, earn payments verified by AI before/after comparison and citizen review.
 
-### 🎮 Gamification System
-- **Green Impact Points** for citizens:
-  - Report Created: +5 points
-  - Report Approved: +10 points
-  - Review Submitted: +5 points
-  - Severity Bonus: +0 to +10 points
-- **6 Achievement Badges**: First Report, Eco Warrior, Zone Champion, Watchdog, Community Hero, Green Legend
-- Leaderboards with time-based filters (Weekly, Monthly, All Time)
+**Key Workflows**:
+1. **AvailableTasks**: Browse marketplace of cleanup opportunities with zone/priority filters, task preview with AI waste analysis (composition, equipment needed), complete task detail with claim button
+2. **MyTasks**: List active (IN_PROGRESS) tasks with countdown timers, upload evidence photo + notes, mark complete; view completed (COMPLETED) tasks awaiting payout
+3. **History**: Task completion timeline with earnings summary (total earned, pending, completed count)
+4. **Payments**: Available balance vs pending balance display, withdrawal form (method selector: bKash/Bank/Card) with destination account, payment transaction history
+5. **Leaderboard**: Rankings by total earnings, tasks completed, and citizen rating
+6. **Profile**: Similar to citizen + rating stats, earnings stats
 
-### 💰 Cleaner Rewards System
-- Real monetary rewards (BDT) for completed tasks
-- Competitive task claiming system
-- Before/after photo verification
-- AI-powered cleanup verification
-- Earnings tracking and history
+### ADMIN: Approve → Manage → Process
+Admins review/approve/decline reports with configurable reward suggestions, create zones with polygon boundaries, manage tasks, process cleaner payments, send bulk notifications.
 
-### 👁️ Citizen Watchdog
-- Review completed cleanups with star ratings
-- Before/after photo comparison
-- Anonymous reviews (cleaner privacy)
-- Quality assurance feedback loop
+**Key Workflows**:
+1. **Dashboard**: KPI cards (pending reports, active tasks, system fund balance), zone report distribution chart, task completion trend chart, quick action buttons
+2. **Reports**: Pending reports list, detail modal with full AI waste analysis, approve (with reward override) / decline (with reason) / reopen buttons, reward suggestion tooltip
+3. **Tasks**: CRUD operations, manual task creation with zone/description/priority/reward/due_date, auto-linking to reports
+4. **Zones**: Create zones with interactive polygon editor (click to add points), view cleanliness scores, edit zone properties
+5. **Payments**: Pending payment list with evidence photos, process payments (bulk/individual), system fund balance, top-up form, fund transaction history
+6. **Profile**: View/edit admin info and settings
 
-### 🔔 Notification System
-- In-app notification center
-- Multiple notification types (info, success, warning, alert)
-- Mark as read functionality
-- Admin bulk notifications to user groups
+### SUPERADMIN: Global Control
+Superadmins manage all users (block/unblock/delete), view complete activity audit logs with timestamps/IPs/actions, revert critical system changes.
 
-### 🌙 Dark Mode
-- System-wide dark theme support
-- Persistent theme preference
-- Smooth theme transitions
+**Key Workflows**:
+1. **Dashboard**: User counts by role, blocked/inactive count, activity audit trail (searchable by action/user/date), global user search/filter, block/unblock/delete user actions, action reversion capability
 
-### 📱 Mobile Responsive
-- Fully responsive design for all screen sizes
-- Mobile-optimized navigation with hamburger menu
-- Touch-friendly UI components
-- Bottom-sheet modals on mobile
+---
 
-## 🚀 Getting Started
+## 🗺️ Public Pages
 
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
+### Landing Page
+Hero section, role introduction cards (Citizens/Cleaners/Admins), feature highlights (AI analysis, mapping, gamification, rewards), 4-step "how it works" flow, statistics, CTA buttons.
 
-### Installation
+### Auth Page
+Role selector (toggle: CITIZEN/CLEANER/ADMIN), login/register tabs, email/password form, error/success toasts.
 
-```bash
-# Clone the repository
-git clone https://github.com/your-username/zero-waste.git
+---
 
-# Navigate to project directory
-cd zero-waste/Zero
+## 🎨 Design & UX
 
-# Install dependencies
-npm install
+### Colors
+- **Primary**: Green #10b981 (eco-themed actions)
+- **Dark mode**: Slate background with white text
+- **Status badges**: Yellow (SUBMITTED), Blue (APPROVED), Purple (IN_PROGRESS), Green (COMPLETED), Red (DECLINED)
 
-# Start development server
-npm run dev
-```
+### Responsive
+- Mobile: Single column, overlay sidebar, fullscreen modals
+- Tablet: 2-column grid for cards
+- Desktop: 3-4 column grid, full sidebar, centered modals
 
-### Environment Variables
+### Dark Mode
+- Toggle in navbar (sun/moon icon)
+- Persisted to localStorage as 'theme'
+- Applied via Tailwind dark: prefix classes
 
-Create a `.env` file in the Zero directory:
-
-```env
-VITE_GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-## 👥 User Roles
-
-### 🏠 Citizen
-Citizens are community members who report waste issues and monitor cleanup quality.
-
-| Feature | Description |
-|---------|-------------|
-| Report Waste | Submit waste reports with photos and location |
-| My Reports | Track status of submitted reports |
-| My Reviews | Review completed cleanups |
-| Leaderboard | Compete with other citizens for points |
-| Profile | Manage account and view badges |
-
-### 🧹 Cleaner
-Cleaners are verified workers who complete cleanup tasks for rewards.
-
-| Feature | Description |
-|---------|-------------|
-| Available Tasks | Browse and claim open tasks |
-| My Tasks | Manage active cleanup assignments |
-| History | View completed tasks and earnings |
-| Leaderboard | Compete based on total earnings |
-| Profile | Track earnings and ratings |
-
-### 🛡️ Administrator
-Administrators manage the entire waste management operation.
-
-| Feature | Description |
-|---------|-------------|
-| Dashboard | Overview of system stats and charts |
-| Reports | Review and approve citizen reports |
-| Tasks | Monitor all cleanup tasks |
-| Zones | Define and manage geographic zones |
-| Bulk Notifications | Send announcements to user groups |
-| Profile | Admin account settings |
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **React 18** - UI library with hooks
-- **TypeScript** - Type-safe development
-- **Vite** - Fast build tool and dev server
-- **React Router** - Client-side routing
-- **Tailwind CSS** - Utility-first styling
-
-### Maps & Geolocation
-- **Leaflet** - Interactive maps
-- **React-Leaflet** - React components for Leaflet
-- **CARTO Tiles** - Map tile provider
-
-### Data Visualization
-- **Recharts** - Charts and graphs
-
-### AI Integration
-- **Google Gemini API** - Waste analysis and detection
-
-### Icons
-- **Lucide React** - Beautiful icon library
+---
 
 ## 📁 Project Structure
 
-```
+`
 Zero/
+├── App.tsx                      # Route configuration, role-based auth guard
 ├── components/
-│   ├── ui.tsx              # Reusable UI components
-│   ├── Layout.tsx          # App layout with navigation
-│   ├── Logo.tsx            # Brand logo component
-│   ├── ZoneMap.tsx         # Zone display map
-│   ├── ZoneEditor.tsx      # Zone polygon editor
-│   └── AIAnalysisDisplay.tsx # AI analysis results
-├── contexts/
-│   └── ThemeContext.tsx    # Dark mode state management
+│   ├── Layout.tsx              # Sidebar (mobile collapsible), header, notifications
+│   ├── ZoneMap.tsx             # React Leaflet interactive map
+│   ├── AIAnalysis Display.tsx   # Render AI waste analysis results
+│   ├── ZoneEditor.tsx          # Polygon drawing interface
+│   └── ui.tsx                  # Tailwind-based UI components
 ├── pages/
-│   ├── Landing.tsx         # Public landing page
-│   ├── Auth.tsx            # Login/Register page
-│   ├── citizen/
-│   │   ├── ReportWaste.tsx # Create waste reports
-│   │   ├── MyReports.tsx   # View own reports
-│   │   ├── MyReviews.tsx   # Review cleanups
-│   │   ├── Leaderboard.tsx # Points leaderboard
-│   │   └── Profile.tsx     # Citizen profile
-│   ├── cleaner/
-│   │   ├── AvailableTasks.tsx # Browse tasks
-│   │   ├── MyTasks.tsx     # Active tasks
-│   │   ├── History.tsx     # Completed tasks
-│   │   ├── Leaderboard.tsx # Earnings leaderboard
-│   │   └── Profile.tsx     # Cleaner profile
-│   └── admin/
-│       ├── Dashboard.tsx   # Admin overview
-│       ├── Reports.tsx     # Manage reports
-│       ├── Tasks.tsx       # Manage tasks
-│       ├── Zones.tsx       # Manage zones
-│       └── Profile.tsx     # Admin profile
+│   ├── Landing.tsx / Auth.tsx  # Public pages
+│   ├── citizen/                # Citizen role pages (Report, Reports, Reviews, Leaderboard, Profile)
+│   ├── cleaner/                # Cleaner role pages (AvailableTasks, MyTasks, History, Payments, Leaderboard, Profile)
+│   ├── admin/                  # Admin role pages (Dashboard, Reports, Tasks, Zones, Payments, Profile)
+│   └── superadmin/             # Superadmin Dashboard
+├── contexts/
+│   ├── AuthContext.tsx         # useAuth() hook
+│   └── ThemeContext.tsx        # useTheme() hook
 ├── services/
-│   └── gemini.ts           # AI service integration
-├── utils/
-│   └── geo.ts              # Geolocation utilities
-├── types.ts                # TypeScript interfaces
-├── constants.ts            # Mock data and constants
-├── App.tsx                 # Main app component
-└── index.tsx               # Entry point
-```
-
-## 🎨 UI Components
-
-The project includes a custom component library (`components/ui.tsx`):
-
-- **Button** - Primary, secondary, danger, outline, ghost variants
-- **Input** - Text input with label and error states
-- **Select** - Dropdown select component
-- **Card** - Content container with optional title
-- **Badge** - Status indicators with color variants
-- **Modal** - Dialog overlay with mobile optimization
-- **Toast** - Notification popups
-- **ConfirmModal** - Confirmation dialogs
-
-## 🗺️ Zone System
-
-Zones are geographic areas defined by polygon coordinates:
-
-```typescript
-interface Zone {
-  id: string;
-  name: string;
-  description: string;
-  polygon: LatLng[];      // Array of coordinates
-  cleanlinessScore: number;
-  color: string;
-}
-```
-
-The system uses a ray-casting algorithm to detect which zone a point belongs to, enabling automatic zone assignment when citizens report waste.
-
-## 🤖 AI Integration
-
-The platform integrates Google Gemini for intelligent waste analysis:
-
-```typescript
-interface WasteAnalysis {
-  wasteTypes: string[];
-  estimatedVolume: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  environmentalImpact: string;
-  recommendedEquipment: string[];
-  estimatedCleanupTime: string;
-  healthHazards: string[];
-  disposalRecommendations: string;
-}
-```
-
-## 📊 Status Flow
-
-```
-SUBMITTED → APPROVED → IN_PROGRESS → COMPLETED
-     ↓
-  DECLINED
-```
-
-| Status | Color | Description |
-|--------|-------|-------------|
-| SUBMITTED | Yellow | Awaiting admin review |
-| APPROVED | Blue | Task created, waiting for cleaner |
-| IN_PROGRESS | Purple | Cleaner working on it |
-| COMPLETED | Green | Cleanup verified |
-| DECLINED | Red | Report rejected |
-
-## 🏆 Gamification Details
-
-### Citizen Points
-| Action | Points |
-|--------|--------|
-| Report Created | +5 |
-| Report Approved | +10 |
-| Review Submitted | +5 |
-| Low Severity | +0 |
-| Medium Severity | +3 |
-| High Severity | +7 |
-| Critical Severity | +10 |
-
-### Badges
-| Badge | Requirement |
-|-------|-------------|
-| 🌱 First Report | Submit first report |
-| 🌿 Eco Warrior | 10+ approved reports |
-| 🗺️ Zone Champion | Reports in 5+ zones |
-| 👁️ Watchdog | 5+ cleanup reviews |
-| 🤝 Community Hero | 50+ total points |
-| 🏆 Green Legend | All badges unlocked |
-
-## 👨‍💻 Team
-
-<div align="center">
-
-| Developer | Role |
-|-----------|------|
-| **Ahammad Shawki** | Lead Developer |
-| **SM Abu Fayeem** | Developer |
-
-</div>
-
-## 📄 License
-
-This project is licensed under the MIT License.
+│   └── api.ts                  # HTTP client with namespaced APIs (auth, citizen, cleaner, admin, etc.)
+└── utils/
+    └── geo.ts                  # isPointInPolygon(), findZoneForPoint() for zone detection
+`
 
 ---
 
-<div align="center">
+## 🚀 Setup & Running
 
-**Built with 💚 for a cleaner Bangladesh**
+### Prerequisites
+`
+Node.js 18+
+npm 9+
+`
 
-</div>
+### Install & Run
+`ash
+cd Zero
+npm install
+npm run dev                     # Runs on http://localhost:3000
+`
+
+### Environment
+`env
+VITE_API_BASE_URL=http://localhost:5000/api
+VITE_GEMINI_API_KEY=your_key (optional)
+`
+
+### Production Build
+`ash
+npm run build                   # Creates dist/ folder
+npm run preview                 # Test production build
+`
+
+---
+
+## 🔐 Security
+
+- No plaintext secrets (all in .env)
+- JWT in localStorage (httpOnly cookies recommended for production)
+- All forms validate required fields, email format, etc.
+- HTTPS in production
+- No passwords/credit cards in logs
+
+---
+
+## 🆘 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| CORS error | Backend not running on :5000 |
+| Login fails 401 | Check credentials, account may be inactive |
+| Map not loading | Check tile server availability in browser console |
+| AI analysis not working | Check HUGGINGFACE_API_KEY and GROQ_API_KEY in backend .env |
+| Dark mode not persisting | localStorage may be disabled |
+
+---
+
+Production-ready, user-centric design ❤️

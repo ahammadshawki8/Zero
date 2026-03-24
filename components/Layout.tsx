@@ -17,6 +17,7 @@ import {
   Leaf,
   Banknote,
   AlertTriangle,
+  Shield,
   Award,
   Clock,
   CheckCheck,
@@ -89,22 +90,31 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user } = useAuth();
+  const isSuperAdmin = Boolean(user?.isSuperAdmin);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   // Load notifications when component mounts
   useEffect(() => {
-    loadNotifications();
+    if (!isSuperAdmin) {
+      loadNotifications();
+    }
   }, []);
 
   // Refresh notification list when dropdown opens so users see latest updates.
   useEffect(() => {
-    if (isNotificationOpen) {
+    if (!isSuperAdmin && isNotificationOpen) {
       loadNotifications();
     }
-  }, [isNotificationOpen]);
+  }, [isNotificationOpen, isSuperAdmin]);
 
   const loadNotifications = async () => {
+    if (isSuperAdmin) {
+      setNotifications([]);
+      setIsNotificationOpen(false);
+      return;
+    }
+
     try {
       setIsLoadingNotifications(true);
       const response = await notificationsAPI.getNotifications();
@@ -150,6 +160,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
   };
 
   const getProfilePath = (role: UserRole) => {
+    if (user?.isSuperAdmin) {
+      return '/superadmin/dashboard';
+    }
+
     switch (role) {
       case 'CITIZEN':
         return '/citizen/profile';
@@ -180,6 +194,11 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
           { label: 'Leaderboard', path: '/cleaner/leaderboard', icon: <Trophy size={20} /> },
         ];
       case 'ADMIN':
+        if (user?.isSuperAdmin) {
+          return [
+            { label: 'Super Admin', path: '/superadmin/dashboard', icon: <Shield size={20} /> },
+          ];
+        }
         return [
           { label: 'Dashboard', path: '/admin/dashboard', icon: <LayoutDashboard size={20} /> },
           { label: 'Citizen Reports', path: '/admin/reports', icon: <FileText size={20} /> },
@@ -281,136 +300,140 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
-            {/* Notification Bell */}
-            <div className="relative" ref={notificationRef}>
-              <button
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className={`p-2 transition-colors relative rounded-lg ${
-                  isNotificationOpen
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                    : 'text-slate-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-                } active:bg-slate-200 dark:active:bg-slate-600 active:scale-95 touch-manipulation`}
-              >
-                <Bell size={20} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full border-2 border-white text-white text-xs flex items-center justify-center font-medium">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              {/* Notification Popup */}
-              {isNotificationOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 max-h-96 sm:max-h-[500px] flex flex-col">
-                  {/* Header */}
-                  <div className="px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-100">Notifications</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{unreadCount} unread</p>
-                    </div>
+            {!isSuperAdmin && (
+              <>
+                {/* Notification Bell */}
+                <div className="relative" ref={notificationRef}>
+                  <button
+                    onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                    className={`p-2 transition-colors relative rounded-lg ${
+                      isNotificationOpen
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                        : 'text-slate-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    } active:bg-slate-200 dark:active:bg-slate-600 active:scale-95 touch-manipulation`}
+                  >
+                    <Bell size={20} />
                     {unreadCount > 0 && (
-                      <button
-                        onClick={markAllAsRead}
-                        className="text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 whitespace-nowrap ml-2 active:scale-95 touch-manipulation transition-transform"
-                      >
-                        Mark all
-                      </button>
+                      <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full border-2 border-white text-white text-xs flex items-center justify-center font-medium">
+                        {unreadCount}
+                      </span>
                     )}
-                  </div>
+                  </button>
 
-                  {/* Notification List */}
-                  <div className="overflow-y-auto flex-1">
-                    {isLoadingNotifications ? (
-                      <div className="p-6 sm:p-8 text-center text-slate-500 dark:text-slate-400">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
-                        <p className="text-xs sm:text-sm">Loading notifications...</p>
-                      </div>
-                    ) : notifications.length === 0 ? (
-                      <div className="p-6 sm:p-8 text-center text-slate-500 dark:text-slate-400">
-                        <Bell size={32} className="mx-auto mb-2 opacity-30" />
-                        <p className="text-xs sm:text-sm">No notifications yet</p>
-                      </div>
-                    ) : (
-                      notifications.map((notification) => {
-                        const iconConfig = getNotificationIcon(notification.type);
-                        const IconComponent = iconConfig.icon;
-                        return (
-                          <div
-                            key={notification.id}
-                            onClick={() => markAsRead(notification.id)}
-                            className={`px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors active:bg-slate-100 dark:active:bg-slate-600 touch-manipulation ${
-                              !notification.is_read ? 'bg-green-50/50 dark:bg-green-900/20' : ''
-                            }`}
+                  {/* Notification Popup */}
+                  {isNotificationOpen && (
+                    <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 max-h-96 sm:max-h-[500px] flex flex-col">
+                      {/* Header */}
+                      <div className="px-3 sm:px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-sm sm:text-base text-slate-800 dark:text-slate-100">Notifications</h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">{unreadCount} unread</p>
+                        </div>
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-xs font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 whitespace-nowrap ml-2 active:scale-95 touch-manipulation transition-transform"
                           >
-                            <div className="flex gap-2 sm:gap-3">
-                              <div
-                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${iconConfig.iconBg} dark:opacity-80 flex items-center justify-center flex-shrink-0`}
-                              >
-                                <IconComponent size={16} className={`sm:w-[18px] sm:h-[18px] ${iconConfig.iconColor}`} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2">
-                                  <p
-                                    className={`text-xs sm:text-sm ${
-                                      !notification.is_read
-                                        ? 'font-semibold text-slate-800 dark:text-slate-100'
-                                        : 'font-medium text-slate-700 dark:text-slate-300'
-                                    }`}
-                                  >
-                                    {notification.title}
-                                  </p>
-                                  {!notification.is_read && (
-                                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0 mt-1" />
-                                  )}
-                                </div>
-                                <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
-                                  {notification.message}
-                                </p>
-                                <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
-                                  <Clock size={10} className="flex-shrink-0" />
-                                  {formatTimeAgo(notification.created_at)}
-                                </p>
-                              </div>
-                            </div>
+                            Mark all
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Notification List */}
+                      <div className="overflow-y-auto flex-1">
+                        {isLoadingNotifications ? (
+                          <div className="p-6 sm:p-8 text-center text-slate-500 dark:text-slate-400">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
+                            <p className="text-xs sm:text-sm">Loading notifications...</p>
                           </div>
-                        );
-                      })
-                    )}
-                  </div>
+                        ) : notifications.length === 0 ? (
+                          <div className="p-6 sm:p-8 text-center text-slate-500 dark:text-slate-400">
+                            <Bell size={32} className="mx-auto mb-2 opacity-30" />
+                            <p className="text-xs sm:text-sm">No notifications yet</p>
+                          </div>
+                        ) : (
+                          notifications.map((notification) => {
+                            const iconConfig = getNotificationIcon(notification.type);
+                            const IconComponent = iconConfig.icon;
+                            return (
+                              <div
+                                key={notification.id}
+                                onClick={() => markAsRead(notification.id)}
+                                className={`px-3 sm:px-4 py-2.5 sm:py-3 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors active:bg-slate-100 dark:active:bg-slate-600 touch-manipulation ${
+                                  !notification.is_read ? 'bg-green-50/50 dark:bg-green-900/20' : ''
+                                }`}
+                              >
+                                <div className="flex gap-2 sm:gap-3">
+                                  <div
+                                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${iconConfig.iconBg} dark:opacity-80 flex items-center justify-center flex-shrink-0`}
+                                  >
+                                    <IconComponent size={16} className={`sm:w-[18px] sm:h-[18px] ${iconConfig.iconColor}`} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p
+                                        className={`text-xs sm:text-sm ${
+                                          !notification.is_read
+                                            ? 'font-semibold text-slate-800 dark:text-slate-100'
+                                            : 'font-medium text-slate-700 dark:text-slate-300'
+                                        }`}
+                                      >
+                                        {notification.title}
+                                      </p>
+                                      {!notification.is_read && (
+                                        <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full flex-shrink-0 mt-1" />
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">
+                                      {notification.message}
+                                    </p>
+                                    <p className="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-1 flex items-center gap-1">
+                                      <Clock size={10} className="flex-shrink-0" />
+                                      {formatTimeAgo(notification.created_at)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
 
-                  {/* Footer */}
-                  <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-700/50 border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
-                    <button className="w-full text-center text-xs sm:text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium active:opacity-70 transition-opacity touch-manipulation">
-                      View all
-                    </button>
-                  </div>
+                      {/* Footer */}
+                      <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-slate-700/50 border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
+                        <button className="w-full text-center text-xs sm:text-sm text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium active:opacity-70 transition-opacity touch-manipulation">
+                          View all
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
-            
-            {/* Profile Button */}
-            <button
-              onClick={() => navigate(getProfilePath(userRole))}
-              className={`flex items-center space-x-2 p-1.5 rounded-lg transition-colors active:scale-95 touch-manipulation ${
-                location.pathname.includes('/profile')
-                  ? 'ring-2 ring-green-500'
-                  : 'hover:bg-slate-100 dark:hover:bg-slate-700'
-              }`}
-            >
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.name || 'Profile'}
-                  className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-slate-600"
-                />
-              ) : (
-                <div className="h-8 w-8 rounded-full bg-green-200 dark:bg-green-700 flex items-center justify-center text-green-800 dark:text-green-100 font-bold text-xs sm:text-sm">
-                  {userRole[0]}
-                </div>
-              )}
-            </button>
+                <div className="h-6 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
+
+                {/* Profile Button */}
+                <button
+                  onClick={() => navigate(getProfilePath(userRole))}
+                  className={`flex items-center space-x-2 p-1.5 rounded-lg transition-colors active:scale-95 touch-manipulation ${
+                    location.pathname.includes('/profile')
+                      ? 'ring-2 ring-green-500'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name || 'Profile'}
+                      className="h-8 w-8 rounded-full object-cover border border-slate-200 dark:border-slate-600"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 rounded-full bg-green-200 dark:bg-green-700 flex items-center justify-center text-green-800 dark:text-green-100 font-bold text-xs sm:text-sm">
+                      {userRole[0]}
+                    </div>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </header>
         <div className="p-3 sm:p-4 md:p-8 max-w-7xl mx-auto pb-20 md:pb-8 safe-area-inset-bottom">

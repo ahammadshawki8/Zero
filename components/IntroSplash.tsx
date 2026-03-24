@@ -73,7 +73,7 @@ export const IntroSplash: React.FC<IntroSplashProps> = ({ onDone, durationMs = 6
             <Logo size="xl" showText={false} className="justify-center" />
           </div>
           <h1 className="text-4xl font-black tracking-[0.28em] sm:text-5xl">ZERO</h1>
-          <p className="mt-2 text-xs uppercase tracking-[0.34em] text-cyan-100/90 sm:text-sm">Smart Cities Start From Zero</p>
+          <p className="mt-2 text-xs uppercase tracking-[0.34em] text-cyan-100/90 sm:text-sm">Clean Cities Start From Zero</p>
 
           <div className="mt-7 h-1.5 w-64 overflow-hidden rounded-full bg-slate-700/60 mx-auto">
             <div className="h-full w-1/2 bg-gradient-to-r from-green-400 via-emerald-300 to-cyan-300" style={{ animation: 'zeroSweep 1.2s linear infinite' }} />

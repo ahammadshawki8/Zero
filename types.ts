@@ -18,6 +18,7 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
+  isSuperAdmin?: boolean;
 }
 
 export interface LatLng {

@@ -29,6 +29,7 @@ import { AdminTasks } from './pages/admin/Tasks';
 import { AdminReports } from './pages/admin/Reports';
 import { AdminProfile } from './pages/admin/Profile';
 import { AdminPayments } from './pages/admin/Payments';
+import { SuperAdminDashboard } from './pages/superadmin/Dashboard';
 
 
 // Landing page wrapper to use navigation
@@ -91,6 +92,7 @@ const AppContent = () => {
         <Routes>
           {/* Redirect root based on role */}
           <Route path="/" element={
+            user!.role === 'ADMIN' && user!.isSuperAdmin ? <Navigate to="/superadmin/dashboard" /> :
             user!.role === 'ADMIN' ? <Navigate to="/admin/dashboard" /> :
             user!.role === 'CLEANER' ? <Navigate to="/cleaner/available" /> :
             <Navigate to="/citizen/report" />
@@ -120,7 +122,13 @@ const AppContent = () => {
           )}
 
           {/* Admin Routes */}
-          {user!.role === 'ADMIN' && (
+          {user!.role === 'ADMIN' && user!.isSuperAdmin && (
+            <>
+              <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
+            </>
+          )}
+
+          {user!.role === 'ADMIN' && !user!.isSuperAdmin && (
             <>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/zones" element={<AdminZones />} />

@@ -314,7 +314,7 @@ export const LandingPage: React.FC<LandingProps> = ({ onGetStarted }) => {
       <footer className="py-6 sm:py-8 md:py-12 px-3 sm:px-6 md:px-8 border-t border-slate-200 dark:border-slate-800">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 text-center sm:text-left">
           <Logo size="sm" />
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">© 2024 Zero Waste Management. Building cleaner cities for Bangladesh.</p>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">© 2026 Zero Waste Management. Building cleaner cities for Bangladesh.</p>
         </div>
       </footer>
     </div>

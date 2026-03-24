@@ -1165,6 +1165,69 @@ export const healthAPI = {
   },
 };
 
+export const superadminAPI = {
+  getDashboard: async () => {
+    const response = await apiClient('/superadmin/dashboard');
+    return response.data;
+  },
+
+  getUsers: async (params?: {
+    role?: 'CITIZEN' | 'CLEANER' | 'ADMIN';
+    is_active?: boolean;
+    search?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.role) query.set('role', params.role);
+    if (params?.is_active !== undefined) query.set('is_active', String(params.is_active));
+    if (params?.search) query.set('search', params.search);
+    if (params?.limit !== undefined) query.set('limit', String(params.limit));
+    if (params?.offset !== undefined) query.set('offset', String(params.offset));
+
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const response = await apiClient(`/superadmin/users${suffix}`);
+    return response;
+  },
+
+  getActivityLogs: async (params?: {
+    user_id?: string;
+    action?: string;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.user_id) query.set('user_id', params.user_id);
+    if (params?.action) query.set('action', params.action);
+    if (params?.limit !== undefined) query.set('limit', String(params.limit));
+    if (params?.offset !== undefined) query.set('offset', String(params.offset));
+
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    const response = await apiClient(`/superadmin/activity-logs${suffix}`);
+    return response;
+  },
+
+  blockUser: async (userId: string) => {
+    const response = await apiClient(`/superadmin/users/${userId}/block`, { method: 'POST' });
+    return response;
+  },
+
+  unblockUser: async (userId: string) => {
+    const response = await apiClient(`/superadmin/users/${userId}/unblock`, { method: 'POST' });
+    return response;
+  },
+
+  deleteUser: async (userId: string) => {
+    const response = await apiClient(`/superadmin/users/${userId}`, { method: 'DELETE' });
+    return response;
+  },
+
+  revertAction: async (actionId: string) => {
+    const response = await apiClient(`/superadmin/actions/${actionId}/revert`, { method: 'POST' });
+    return response;
+  },
+};
+
 // Export auth token utilities
 export { setAuthToken, authToken };
 
@@ -1174,6 +1237,7 @@ export default {
   citizen: citizenAPI,
   cleaner: cleanerAPI,
   admin: adminAPI,
+  superadmin: superadminAPI,
   ai: aiAPI,
   notifications: notificationsAPI,
   leaderboards: leaderboardsAPI,

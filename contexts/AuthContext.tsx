@@ -43,6 +43,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     email: rawUser?.email || '',
     role: rawUser?.role as UserRole,
     avatar: rawUser?.avatar || rawUser?.avatar_url || undefined,
+    isSuperAdmin: Boolean(rawUser?.is_superadmin || rawUser?.isSuperAdmin),
   });
 
   const isAuthenticated = !!user;

@@ -80,7 +80,7 @@ export const AuthPage: React.FC = () => {
             Zero Waste Management
           </h2>
           <p className="mt-2 text-center text-xs sm:text-sm text-slate-600 dark:text-slate-400 px-2">
-            Smart cities start from zero.
+            Clean cities start from zero.
           </p>
         </div>
 

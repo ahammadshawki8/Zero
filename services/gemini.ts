@@ -3,12 +3,7 @@ import { WasteAnalysis } from '../types';
 
 // Safely retrieve API key without crashing in environments where process is undefined
 const getApiKey = () => {
-  try {
-    return process.env.API_KEY || '';
-  } catch {
-    console.warn('process.env is not defined, skipping API key retrieval.');
-    return '';
-  }
+  return (import.meta as any)?.env?.VITE_GEMINI_API_KEY || '';
 };
 
 const getClient = () => {
