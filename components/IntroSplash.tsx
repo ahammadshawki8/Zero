@@ -9,6 +9,8 @@ type IntroSplashProps = {
 export const IntroSplash: React.FC<IntroSplashProps> = ({ onDone, durationMs = 6500 }) => {
   const [videoFailed, setVideoFailed] = useState(false);
   const [gifFailed, setGifFailed] = useState(false);
+  const introVideoUrl = (import.meta as any)?.env?.VITE_INTRO_VIDEO_URL || '';
+  const introGifUrl = (import.meta as any)?.env?.VITE_INTRO_GIF_URL || '';
 
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === 'undefined' || !window.matchMedia) {
@@ -22,9 +24,9 @@ export const IntroSplash: React.FC<IntroSplashProps> = ({ onDone, durationMs = 6
     return () => window.clearTimeout(timeout);
   }, [durationMs, onDone, prefersReducedMotion]);
 
-  const showVideo = !prefersReducedMotion && !videoFailed;
-  const showGif = !prefersReducedMotion && videoFailed && !gifFailed;
-  const showFallback = prefersReducedMotion || (videoFailed && gifFailed);
+  const showVideo = !prefersReducedMotion && Boolean(introVideoUrl) && !videoFailed;
+  const showGif = !prefersReducedMotion && !showVideo && Boolean(introGifUrl) && !gifFailed;
+  const showFallback = prefersReducedMotion || (!showVideo && !showGif) || (videoFailed && gifFailed);
 
   return (
     <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#061024] text-white">
@@ -46,13 +48,13 @@ export const IntroSplash: React.FC<IntroSplashProps> = ({ onDone, durationMs = 6
           preload="auto"
           onError={() => setVideoFailed(true)}
         >
-          <source src="/intro.mp4" type="video/mp4" />
+          <source src={introVideoUrl} type="video/mp4" />
         </video>
       )}
 
       {showGif && (
         <img
-          src="/intro.gif"
+          src={introGifUrl}
           alt="Zero intro"
           className="absolute inset-0 h-full w-full object-cover opacity-45"
           onError={() => setGifFailed(true)}
