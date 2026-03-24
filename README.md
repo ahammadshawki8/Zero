@@ -89,7 +89,7 @@ Role selector (toggle: CITIZEN/CLEANER/ADMIN), login/register tabs, email/passwo
 
 ## 📁 Project Structure
 
-`
+```
 Zero/
 ├── App.tsx                      # Route configuration, role-based auth guard
 ├── components/
@@ -111,36 +111,36 @@ Zero/
 │   └── api.ts                  # HTTP client with namespaced APIs (auth, citizen, cleaner, admin, etc.)
 └── utils/
     └── geo.ts                  # isPointInPolygon(), findZoneForPoint() for zone detection
-`
+```
 
 ---
 
 ## 🚀 Setup & Running
 
 ### Prerequisites
-`
+```
 Node.js 18+
 npm 9+
-`
+```
 
 ### Install & Run
-`ash
+```ash
 cd Zero
 npm install
 npm run dev                     # Runs on http://localhost:3000
-`
+```
 
 ### Environment
-`env
+```env
 VITE_API_BASE_URL=http://localhost:5000/api
 VITE_GEMINI_API_KEY=your_key (optional)
-`
+```
 
 ### Production Build
-`ash
+```ash
 npm run build                   # Creates dist/ folder
 npm run preview                 # Test production build
-`
+```
 
 ---
 
@@ -165,5 +165,3 @@ npm run preview                 # Test production build
 | Dark mode not persisting | localStorage may be disabled |
 
 ---
-
-Production-ready, user-centric design ❤️
