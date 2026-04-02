@@ -63,7 +63,10 @@ const getNotificationIcon = (type: string) => {
 
 // Format time ago
 const formatTimeAgo = (dateString: string) => {
-  const date = new Date(dateString);
+  const normalizedDateString = /([zZ]|[+-]\d\d:\d\d)$/.test(dateString)
+    ? dateString
+    : `${dateString}Z`;
+  const date = new Date(normalizedDateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   
