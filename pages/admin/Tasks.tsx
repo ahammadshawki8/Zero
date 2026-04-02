@@ -63,7 +63,6 @@ export const AdminTasks = () => {
           !t.cleanerName?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       return true;
     })
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     .sort((a, b) => (parseApiDate(b.createdAt)?.getTime() ?? 0) - (parseApiDate(a.createdAt)?.getTime() ?? 0));
 
   const availableTasks = tasks.filter((t) => t.status === 'APPROVED').length;
