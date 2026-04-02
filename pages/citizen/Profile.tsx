@@ -22,6 +22,7 @@ import {
   Download,
 } from 'lucide-react';
 import { CitizenProfile } from '../../types';
+import { formatApiDate } from '../../utils/date';
 
 export const Profile = () => {
   const { user, updateUser } = useAuth();
@@ -278,7 +279,7 @@ export const Profile = () => {
             <div className="flex flex-wrap justify-center md:justify-start gap-2 sm:gap-4 mt-2 sm:mt-3 text-xs sm:text-sm">
               <span className="flex items-center gap-1">
                 <Calendar size={12} className="sm:w-3.5 sm:h-3.5" />
-                Joined {profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : 'Recently'}
+                Joined {formatApiDate(profile.createdAt, 'Recently')}
               </span>
               <span className="flex items-center gap-1">
                 <Leaf size={12} className="sm:w-3.5 sm:h-3.5" />

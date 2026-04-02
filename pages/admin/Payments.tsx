@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { adminAPI } from '../../services/api';
 import { Badge, Button, Card, ConfirmModal, Input, Modal, Select, Toast } from '../../components/ui';
+import { formatApiDateTime } from '../../utils/date';
 import {
   Banknote,
   Clock,
@@ -102,11 +103,10 @@ export const AdminPayments = () => {
       if (initial) setIsLoading(true);
       else setIsRefreshing(true);
 
-      const [pendingData, fundHistoryData, paymentSummary] = await Promise.all([
-        adminAPI.getPendingPayments(),
-        adminAPI.getFundTransactionHistory(),
-        adminAPI.getPaymentSummary(),
-      ]);
+      // Load the payment screen in sequence to avoid bursty pool usage on Render.
+      const paymentSummary = await adminAPI.getPaymentSummary();
+      const pendingData = await adminAPI.getPendingPayments();
+      const fundHistoryData = await adminAPI.getFundTransactionHistory();
 
       setPending(Array.isArray(pendingData) ? pendingData : []);
       setFundHistory(Array.isArray(fundHistoryData) ? fundHistoryData : []);
@@ -299,7 +299,7 @@ export const AdminPayments = () => {
                     </p>
                     <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span className="inline-flex items-center gap-1"><User size={12} /> {item.cleaner_email || 'No email'}</span>
-                      <span className="inline-flex items-center gap-1"><Clock size={12} /> {item.task_completed_at ? new Date(item.task_completed_at).toLocaleString() : 'Not completed time'}</span>
+                      <span className="inline-flex items-center gap-1"><Clock size={12} /> {formatApiDateTime(item.task_completed_at, 'Not completed time')}</span>
                       {item.location && (
                         <span className="inline-flex items-center gap-1"><MapPin size={12} /> {item.location.lat.toFixed(4)}, {item.location.lng.toFixed(4)}</span>
                       )}
@@ -350,7 +350,7 @@ export const AdminPayments = () => {
                     <td className="px-4 py-3">৳{Number(txn.balance_after || 0).toLocaleString()}</td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{txn.note || '-'}</td>
                     <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{txn.created_by_name || 'System'}</td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{txn.created_at ? new Date(txn.created_at).toLocaleString() : '-'}</td>
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{formatApiDateTime(txn.created_at, '-')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -500,7 +500,7 @@ export const AdminPayments = () => {
                     </p>
                     <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{selectedPromise.review_comment || 'No comment provided.'}</p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      {selectedPromise.review_created_at ? new Date(selectedPromise.review_created_at).toLocaleString() : ''}
+                      {formatApiDateTime(selectedPromise.review_created_at, '')}
                     </p>
                   </>
                 ) : (

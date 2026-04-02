@@ -4,6 +4,7 @@ import { citizenAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Trophy, Medal, Award, Leaf, TrendingUp, Target, Flame, Crown } from 'lucide-react';
 import { LeaderboardEntry, CitizenProfile } from '../../types';
+import { formatApiDate } from '../../utils/date';
 
 type TimeFilter = 'week' | 'month' | 'all';
 
@@ -29,10 +30,8 @@ export const Leaderboard = () => {
           all: 'all_time',
         };
 
-        const [leaderboardData, profileData] = await Promise.all([
-          citizenAPI.getLeaderboard(periodMap[timeFilter], 50),
-          citizenAPI.getProfile(),
-        ]);
+        const leaderboardData = await citizenAPI.getLeaderboard(periodMap[timeFilter], 50);
+        const profileData = await citizenAPI.getProfile();
         setLeaderboard(leaderboardData);
         setProfile(profileData);
       } catch (error) {
@@ -111,7 +110,7 @@ export const Leaderboard = () => {
           <div>
             <h2 className="text-lg sm:text-xl font-bold">{profile.name}</h2>
             <p className="text-green-100 text-xs sm:text-sm">
-              Rank #{profile.rank || 'N/A'} • Joined {new Date(profile.createdAt || Date.now()).toLocaleDateString()}
+              Rank #{profile.rank || 'N/A'} • Joined {formatApiDate(profile.createdAt, formatApiDate(Date.now(), 'Recently'))}
             </p>
           </div>
         </div>
@@ -154,7 +153,7 @@ export const Leaderboard = () => {
                 <div className="text-[8px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{badge.description}</div>
                 {badge.earnedAt && (
                   <div className="text-[8px] sm:text-xs text-green-600 dark:text-green-400 mt-2">
-                    {'\u2713'} {new Date(badge.earnedAt).toLocaleDateString()}
+                    {'\u2713'} {formatApiDate(badge.earnedAt)}
                   </div>
                 )}
               </div>

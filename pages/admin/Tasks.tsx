@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Task, Severity } from '../../types';
 import { AIAnalysisDisplay, CleanupComparisonDisplay } from '../../components/AIAnalysisDisplay';
+import { formatApiDate, formatApiDateTime, parseApiDate } from '../../utils/date';
 
 export const AdminTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -63,6 +64,7 @@ export const AdminTasks = () => {
       return true;
     })
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => (parseApiDate(b.createdAt)?.getTime() ?? 0) - (parseApiDate(a.createdAt)?.getTime() ?? 0));
 
   const availableTasks = tasks.filter((t) => t.status === 'APPROVED').length;
   const inProgressTasks = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
@@ -98,15 +100,11 @@ export const AdminTasks = () => {
   };
 
   const formatDateTime = (value?: string) => {
-    if (!value) return 'N/A';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleString();
+    return formatApiDateTime(value);
   };
 
   const formatDateOnly = (value?: string) => {
-    if (!value) return 'N/A';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+    return formatApiDate(value);
   };
 
   const handleEditTask = (task: Task) => {
@@ -308,7 +306,7 @@ export const AdminTasks = () => {
                         ৳{task.reward.toLocaleString()}
                       </td>
                       <td className="px-4 py-4">
-                        {new Date(task.dueDate).toLocaleDateString()}
+                        {formatApiDate(task.dueDate)}
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="flex gap-1 justify-end">

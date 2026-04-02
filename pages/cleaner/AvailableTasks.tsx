@@ -13,6 +13,7 @@ import {
 import { Task, Severity, Zone } from '../../types';
 import { ZoneDisplayMap } from '../../components/ZoneMap';
 import { AIAnalysisDisplay } from '../../components/AIAnalysisDisplay';
+import { formatApiDate, parseApiDate } from '../../utils/date';
 
 export const AvailableTasks = () => {
   const [availableTasks, setAvailableTasks] = useState<Task[]>([]);
@@ -31,10 +32,8 @@ export const AvailableTasks = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [tasksData, zonesData] = await Promise.all([
-          cleanerAPI.getAvailableTasks(),
-          sharedAPI.getZones(),
-        ]);
+        const tasksData = await cleanerAPI.getAvailableTasks();
+        const zonesData = await sharedAPI.getZones();
         setAvailableTasks(tasksData);
         setZones(Array.isArray(zonesData) ? zonesData : []);
       } catch (error) {
@@ -59,9 +58,7 @@ export const AvailableTasks = () => {
   };
 
   const formatDate = (value?: string) => {
-    if (!value) return 'N/A';
-    const d = new Date(value);
-    return Number.isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString();
+    return formatApiDate(value);
   };
 
   const handleConfirmTake = async () => {
@@ -380,7 +377,7 @@ export const AvailableTasks = () => {
               </div>
               <div>
                 <p className="text-slate-500">Due Date</p>
-                <p className="font-medium">{new Date(activeTask.dueDate).toLocaleDateString()}</p>
+                <p className="font-medium">{formatApiDate(activeTask.dueDate)}</p>
               </div>
             </div>
 

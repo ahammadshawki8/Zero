@@ -18,6 +18,7 @@ import {
   Trash2,
   Download,
 } from 'lucide-react';
+import { formatApiDate } from '../../utils/date';
 
 export const AdminProfile = () => {
   const { updateUser, logout } = useAuth();
@@ -281,7 +282,7 @@ export const AdminProfile = () => {
             <div className="flex flex-wrap justify-center md:justify-start gap-2 sm:gap-4 mt-2 sm:mt-3 text-xs sm:text-sm">
               <span className="flex items-center gap-1">
                 <Calendar size={12} className="sm:w-3.5 sm:h-3.5" />
-                Joined {profile.joinedAt ? new Date(profile.joinedAt).toLocaleDateString() : 'Recently'}
+                Joined {formatApiDate(profile.joinedAt, 'Recently')}
               </span>
               <span className="flex items-center gap-1">
                 <Bell size={12} className="sm:w-3.5 sm:h-3.5" />

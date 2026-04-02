@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Status, Report } from '../../types';
 import { AIAnalysisDisplay, CleanupComparisonDisplay } from '../../components/AIAnalysisDisplay';
+import { formatApiDate, formatApiDateTime, parseApiDate } from '../../utils/date';
 
 export const MyReports = () => {
   type PointsHistoryEntry = {
@@ -59,10 +60,8 @@ export const MyReports = () => {
   useEffect(() => {
     const loadReports = async () => {
       try {
-        const [reportsData, pointsData] = await Promise.all([
-          citizenAPI.getMyReports(),
-          citizenAPI.getPointsHistory(),
-        ]);
+        const reportsData = await citizenAPI.getMyReports();
+        const pointsData = await citizenAPI.getPointsHistory();
 
         setReports(reportsData);
         setPointsHistory(Array.isArray(pointsData) ? pointsData : []);
@@ -333,17 +332,11 @@ export const MyReports = () => {
   };
 
   const formatTimestamp = (timestamp?: string) => {
-    if (!timestamp) return 'N/A';
-    const date = new Date(timestamp);
-    if (Number.isNaN(date.getTime())) return 'N/A';
-    return date.toLocaleDateString();
+    return formatApiDate(timestamp);
   };
 
   const formatDateTime = (timestamp?: string) => {
-    if (!timestamp) return 'N/A';
-    const date = new Date(timestamp);
-    if (Number.isNaN(date.getTime())) return 'N/A';
-    return date.toLocaleString();
+    return formatApiDateTime(timestamp);
   };
 
   const selectedReportPoints = selectedReport
@@ -540,8 +533,8 @@ export const MyReports = () => {
                   <div><span className="text-slate-500">Severity:</span> {selectedReport.severity}</div>
                   <div>
                     <span className="text-slate-500">Reported:</span>{' '}
-                    {selectedReport.timestamp && !Number.isNaN(new Date(selectedReport.timestamp).getTime())
-                      ? new Date(selectedReport.timestamp).toLocaleString()
+                    {parseApiDate(selectedReport.timestamp)
+                      ? formatApiDateTime(selectedReport.timestamp)
                       : 'N/A'}
                   </div>
                 </div>
@@ -629,7 +622,7 @@ export const MyReports = () => {
                       ))}
                     </div>
                     <span className="text-sm text-slate-500">
-                      {new Date(selectedReport.citizenReview.timestamp).toLocaleDateString()}
+                      {formatApiDate(selectedReport.citizenReview.timestamp)}
                     </span>
                   </div>
                   {selectedReport.citizenReview.comment && (

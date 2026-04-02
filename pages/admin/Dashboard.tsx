@@ -58,12 +58,10 @@ export const AdminDashboard = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const [reportsData, tasksData, zonesData, statsData] = await Promise.all([
-          adminAPI.getAllReports(),
-          adminAPI.getAllTasks(),
-          sharedAPI.getZones(),
-          adminAPI.getStats(),
-        ]);
+        const reportsData = await adminAPI.getAllReports();
+        const tasksData = await adminAPI.getAllTasks();
+        const zonesData = await sharedAPI.getZones();
+        const statsData = await adminAPI.getStats();
         
         setReports(reportsData);
         setTasks(tasksData);

@@ -10,6 +10,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { Task } from '../../types';
+import { formatApiDate, parseApiDate } from '../../utils/date';
 
 export const MyTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -46,8 +47,8 @@ export const MyTasks = () => {
 
   const getDueCategory = (dueDate: string) => {
     const now = new Date();
-    const due = new Date(dueDate);
-    if (Number.isNaN(due.getTime())) return 'UNKNOWN' as const;
+    const due = parseApiDate(dueDate);
+    if (!due) return 'UNKNOWN' as const;
 
     const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const startDue = new Date(due.getFullYear(), due.getMonth(), due.getDate()).getTime();
@@ -65,8 +66,8 @@ export const MyTasks = () => {
       return getDueCategory(task.dueDate) === dueFilter;
     })
     .sort((a, b) => {
-      const aDue = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
-      const bDue = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const aDue = parseApiDate(a.dueDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const bDue = parseApiDate(b.dueDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
       return aDue - bDue;
     });
 
@@ -202,11 +203,11 @@ export const MyTasks = () => {
               <div className="flex items-center text-xs text-slate-500 mb-4 space-x-4">
                 <div className="flex items-center">
                   <Calendar size={14} className="mr-1" />
-                  Due: {new Date(task.dueDate).toLocaleDateString()}
+                  Due: {formatApiDate(task.dueDate)}
                 </div>
                 <div className="flex items-center">
                   <Clock size={14} className="mr-1" />
-                  Taken: {task.takenAt ? new Date(task.takenAt).toLocaleDateString() : 'N/A'}
+                  Taken: {formatApiDate(task.takenAt)}
                 </div>
               </div>
 

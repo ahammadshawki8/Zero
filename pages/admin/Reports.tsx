@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Report, Severity } from '../../types';
 import { AIAnalysisDisplay, CleanupComparisonDisplay } from '../../components/AIAnalysisDisplay';
+import { formatApiDate, formatApiDateTime, parseApiDate } from '../../utils/date';
 
 export const AdminReports = () => {
   const [reports, setReports] = useState<Report[]>([]);
@@ -58,7 +59,7 @@ export const AdminReports = () => {
         const sortedReports = filteredReports.sort((a: Report, b: Report) => {
           if (a.status === 'SUBMITTED' && b.status !== 'SUBMITTED') return -1;
           if (b.status === 'SUBMITTED' && a.status !== 'SUBMITTED') return 1;
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+          return (parseApiDate(b.timestamp)?.getTime() ?? 0) - (parseApiDate(a.timestamp)?.getTime() ?? 0);
         });
         
         setReports(sortedReports);
@@ -398,7 +399,7 @@ export const AdminReports = () => {
                     <div className="flex items-center gap-4 text-xs text-slate-500">
                       <span className="flex items-center gap-1">
                         <Calendar size={12} />
-                        {new Date(report.timestamp).toLocaleDateString()}
+                        {formatApiDate(report.timestamp)}
                       </span>
                       <span className="flex items-center gap-1">
                         <MapPin size={12} />
@@ -484,7 +485,7 @@ export const AdminReports = () => {
               </div>
               <div className="text-right text-sm text-slate-500">
                 <div>Reported by: {selectedReport.userName}</div>
-                <div>{new Date(selectedReport.timestamp).toLocaleString()}</div>
+                <div>{formatApiDateTime(selectedReport.timestamp)}</div>
               </div>
             </div>
 

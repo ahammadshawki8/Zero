@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Toast } from '../../components/ui';
 import { superadminAPI } from '../../services/api';
+import { formatApiDateTime } from '../../utils/date';
 
 type SuperAdminUser = {
   id: string;
@@ -42,11 +43,9 @@ export const SuperAdminDashboard: React.FC = () => {
   const loadData = async () => {
     setIsRefreshing(true);
     try {
-      const [dashboardRes, usersRes, logsRes] = await Promise.all([
-        superadminAPI.getDashboard(),
-        superadminAPI.getUsers({ limit: 100, search: search || undefined }),
-        superadminAPI.getActivityLogs({ limit: 50 }),
-      ]);
+      const dashboardRes = await superadminAPI.getDashboard();
+      const usersRes = await superadminAPI.getUsers({ limit: 100, search: search || undefined });
+      const logsRes = await superadminAPI.getActivityLogs({ limit: 50 });
       setStats(dashboardRes || {});
       setUsers(Array.isArray(usersRes?.data) ? usersRes.data : []);
       setLogs(Array.isArray(logsRes?.data) ? logsRes.data : []);
@@ -191,7 +190,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       Actor: {log.user_name || 'System'} ({log.user_role || 'N/A'}) | Entity: {log.entity_type || 'N/A'}:{log.entity_id || '-'}
                     </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500">{new Date(log.created_at).toLocaleString()}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">{formatApiDateTime(log.created_at)}</p>
                   </div>
                   {canRevert && (
                     <Button

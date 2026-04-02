@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Badge, Button, Card, ConfirmModal, Input, Modal, Select, Toast } from '../../components/ui';
 import { cleanerAPI } from '../../services/api';
 import { ArrowDownToLine, Banknote, Clock, Wallet } from 'lucide-react';
+import { formatApiDateTime } from '../../utils/date';
 
 type PaymentSummary = {
   total_earnings: number;
@@ -49,10 +50,8 @@ export const CleanerPayments = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [summaryData, historyData] = await Promise.all([
-        cleanerAPI.getPaymentSummary(),
-        cleanerAPI.getPaymentHistory(),
-      ]);
+      const summaryData = await cleanerAPI.getPaymentSummary();
+      const historyData = await cleanerAPI.getPaymentHistory();
 
       setSummary(summaryData || null);
       setHistory(Array.isArray(historyData) ? historyData : []);
@@ -240,7 +239,7 @@ export const CleanerPayments = () => {
                       <Badge variant={item.status === 'PROCESSED' || item.status === 'PAID' ? 'success' : 'warning'}>{item.status}</Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                      {item.event_at ? new Date(item.event_at).toLocaleString() : '-'}
+                      {formatApiDateTime(item.event_at, '-')}
                     </td>
                   </tr>
                 ))}

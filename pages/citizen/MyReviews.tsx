@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Report } from '../../types';
 import { AIAnalysisDisplay, CleanupComparisonDisplay } from '../../components/AIAnalysisDisplay';
+import { formatApiDate } from '../../utils/date';
 
 const REVIEW_BONUS_POINTS = 5;
 
@@ -332,9 +333,9 @@ export const MyReviews = () => {
                           <span className="flex items-center gap-1">
                             <Clock size={12} />
                             {review?.reviewedAt
-                              ? new Date(review.reviewedAt).toLocaleDateString()
+                              ? formatApiDate(review.reviewedAt)
                               : review?.timestamp
-                                ? new Date(review.timestamp).toLocaleDateString()
+                                ? formatApiDate(review.timestamp)
                                 : 'N/A'}
                           </span>
                         </div>

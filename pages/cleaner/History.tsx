@@ -4,6 +4,7 @@ import { Eye, TrendingUp, Star, CheckCircle, MessageSquare, Clock } from 'lucide
 import { Task } from '../../types';
 import { AIAnalysisDisplay, CleanupComparisonDisplay } from '../../components/AIAnalysisDisplay';
 import { cleanerAPI } from '../../services/api';
+import { formatApiDate, formatApiDateTime } from '../../utils/date';
 
 type TaskPaymentMeta = {
   status: 'PAID' | 'PENDING' | 'UNKNOWN';
@@ -30,10 +31,8 @@ export const CleanerHistory = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [tasksData, earningsData] = await Promise.all([
-          cleanerAPI.getCompletedTasks(),
-          cleanerAPI.getEarnings(),
-        ]);
+        const tasksData = await cleanerAPI.getCompletedTasks();
+        const earningsData = await cleanerAPI.getEarnings();
 
         const earningsRows = Array.isArray(earningsData)
           ? (earningsData as EarningsTransaction[])
@@ -174,7 +173,7 @@ export const CleanerHistory = () => {
                       <td className="px-3 sm:px-6 py-2 sm:py-4 text-[11px] sm:text-sm font-medium text-slate-900 dark:text-slate-100">{task.id}</td>
                       <td className="px-3 sm:px-6 py-2 sm:py-4 text-[11px] sm:text-sm text-slate-600 dark:text-slate-400">{task.zoneName}</td>
                       <td className="px-3 sm:px-6 py-2 sm:py-4 text-[11px] sm:text-sm text-slate-500 dark:text-slate-400">
-                        {task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'N/A'}
+                        {formatApiDate(task.completedAt)}
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-green-600">৳{task.reward}</td>
                       <td className="px-6 py-4 text-sm">
@@ -182,7 +181,7 @@ export const CleanerHistory = () => {
                           <div className="space-y-1">
                             <Badge variant="success">PAID</Badge>
                             <p className="text-xs text-slate-500">
-                              {payment.paidAt ? `Paid on ${new Date(payment.paidAt).toLocaleDateString()}` : 'Paid'}
+                              {payment.paidAt ? `Paid on ${formatApiDate(payment.paidAt)}` : 'Paid'}
                             </p>
                           </div>
                         ) : payment.status === 'PENDING' ? (
@@ -224,7 +223,7 @@ export const CleanerHistory = () => {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-400">
                     <CheckCircle size={12} />
-                    {task.completedAt ? new Date(task.completedAt).toLocaleDateString() : 'N/A'}
+                    {formatApiDate(task.completedAt)}
                   </div>
                   <div className="mt-2">
                     {payment.status === 'PAID' ? (
@@ -268,7 +267,7 @@ export const CleanerHistory = () => {
                   <p className="text-xs text-slate-500 mt-1">
                     {payment.status === 'PAID'
                       ? payment.paidAt
-                        ? `Paid by admin on ${new Date(payment.paidAt).toLocaleString()}`
+                        ? `Paid by admin on ${formatApiDateTime(payment.paidAt)}`
                         : 'Paid by admin'
                       : payment.status === 'PENDING'
                         ? 'Awaiting admin payment confirmation'
@@ -361,7 +360,7 @@ export const CleanerHistory = () => {
                 <div className="flex items-center justify-end text-xs text-slate-500">
                   <div className="flex items-center gap-1">
                     <Clock size={12} />
-                    <span>{new Date(selectedTask.review.reviewedAt).toLocaleDateString()}</span>
+                    <span>{formatApiDate(selectedTask.review.reviewedAt)}</span>
                   </div>
                 </div>
               </div>
