@@ -444,8 +444,16 @@ export const authAPI = {
     return response;
   },
 
-  logout: () => {
-    setAuthToken(null);
+  logout: async () => {
+    try {
+      await apiClient('/auth/logout', {
+        method: 'POST',
+      });
+    } catch {
+      // Best-effort server logout; always clear client token.
+    } finally {
+      setAuthToken(null);
+    }
   },
 
   getCurrentUser: async () => {
