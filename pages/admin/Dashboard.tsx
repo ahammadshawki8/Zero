@@ -50,7 +50,7 @@ export const AdminDashboard = () => {
     audience: 'all',
     title: '',
     message: '',
-    type: 'info',
+    type: 'alert',
   });
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'error' });
 
@@ -94,7 +94,7 @@ export const AdminDashboard = () => {
         type: 'success',
       });
       setShowNotificationModal(false);
-      setNotificationData({ audience: 'all', title: '', message: '', type: 'info' });
+      setNotificationData({ audience: 'all', title: '', message: '', type: 'alert' });
     } catch (error: any) {
       console.error('Failed to send notification:', error);
       setToast({

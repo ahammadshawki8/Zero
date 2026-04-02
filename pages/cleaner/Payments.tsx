@@ -10,23 +10,26 @@ type PaymentSummary = {
   available_balance: number;
 };
 
-type WithdrawalItem = {
+type PaymentTimelineItem = {
   id: string;
+  event_type: 'WITHDRAWAL' | 'ADMIN_PAYMENT' | string;
   amount: number;
   method: 'BKASH' | 'BANK' | 'CARD' | string;
-  destination_account: string;
+  destination_account?: string;
   reference_code?: string;
   note?: string;
   status: 'PROCESSED' | 'PENDING' | 'FAILED' | string;
-  requested_at?: string;
+  event_at?: string;
   processed_at?: string;
+  task_id?: string;
+  task_description?: string;
 };
 
 export const CleanerPayments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
-  const [history, setHistory] = useState<WithdrawalItem[]>([]);
+  const [history, setHistory] = useState<PaymentTimelineItem[]>([]);
 
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -202,32 +205,42 @@ export const CleanerPayments = () => {
           Balance increases only when admin confirms payout promises for your completed tasks.
         </div>
 
-        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Withdrawal History</h3>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Payment History</h3>
         {history.length === 0 ? (
-          <div className="py-8 text-center text-slate-500 dark:text-slate-400">No withdrawal history yet.</div>
+          <div className="py-8 text-center text-slate-500 dark:text-slate-400">No payment history yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left bg-slate-50 dark:bg-slate-700/50 text-slate-500 dark:text-slate-300">
                 <tr>
+                  <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Method</th>
-                  <th className="px-4 py-3">Destination</th>
+                  <th className="px-4 py-3">Details</th>
                   <th className="px-4 py-3">Amount</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Requested</th>
+                  <th className="px-4 py-3">Time</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {history.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                    <td className="px-4 py-3">
+                      <Badge variant={item.event_type === 'ADMIN_PAYMENT' ? 'success' : 'info'}>
+                        {item.event_type === 'ADMIN_PAYMENT' ? 'Admin Payment' : 'Withdrawal'}
+                      </Badge>
+                    </td>
                     <td className="px-4 py-3">{item.method}</td>
-                    <td className="px-4 py-3">{item.destination_account}</td>
+                    <td className="px-4 py-3">
+                      {item.event_type === 'ADMIN_PAYMENT'
+                        ? (item.task_description || 'Task payout')
+                        : (item.destination_account || '-')}
+                    </td>
                     <td className="px-4 py-3 font-medium">৳{Number(item.amount || 0).toLocaleString()}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={item.status === 'PROCESSED' ? 'success' : 'warning'}>{item.status}</Badge>
+                      <Badge variant={item.status === 'PROCESSED' || item.status === 'PAID' ? 'success' : 'warning'}>{item.status}</Badge>
                     </td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                      {item.requested_at ? new Date(item.requested_at).toLocaleString() : '-'}
+                      {item.event_at ? new Date(item.event_at).toLocaleString() : '-'}
                     </td>
                   </tr>
                 ))}
