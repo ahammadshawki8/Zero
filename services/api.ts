@@ -833,6 +833,11 @@ export const adminAPI = {
     return response.data;
   },
 
+  getDashboardSummary: async () => {
+    const response = await apiClient('/admin/dashboard-summary');
+    return response.data;
+  },
+
   getPendingReports: async (): Promise<Report[]> => {
     const response = await apiClient('/admin/reports/pending');
     const reports = Array.isArray(response?.data) ? response.data : [];

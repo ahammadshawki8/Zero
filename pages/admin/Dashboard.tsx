@@ -31,14 +31,48 @@ import {
 import { Card, Badge, Button, Modal, Input, Select, Toast } from '../../components/ui';
 import { adminAPI, sharedAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Report, Task, Zone } from '../../types';
+import { Report, Zone } from '../../types';
+
+type AdminDashboardSummary = {
+  report_stats?: {
+    total?: number;
+    submitted?: number;
+    approved?: number;
+    in_progress?: number;
+    completed?: number;
+    declined?: number;
+    critical_pending?: number;
+  };
+  task_stats?: {
+    total?: number;
+    available?: number;
+    in_progress?: number;
+    completed?: number;
+    total_rewards?: number;
+    paid_out?: number;
+  };
+  reports_by_zone?: Array<{
+    zone_id: string;
+    zone_name: string;
+    cleanliness_score: number;
+    reports: number;
+  }>;
+  pending_reports?: Array<{
+    id: string;
+    zone_id: string;
+    zone_name: string;
+    description: string;
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    status: 'SUBMITTED' | 'APPROVED' | 'IN_PROGRESS' | 'COMPLETED' | 'DECLINED';
+    created_at: string;
+    user_name?: string;
+  }>;
+};
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [reports, setReports] = useState<Report[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [notificationData, setNotificationData] = useState<{
@@ -58,15 +92,11 @@ export const AdminDashboard = () => {
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        const reportsData = await adminAPI.getAllReports();
-        const tasksData = await adminAPI.getAllTasks();
+        const summaryData = await adminAPI.getDashboardSummary();
         const zonesData = await sharedAPI.getZones();
-        const statsData = await adminAPI.getStats();
-        
-        setReports(reportsData);
-        setTasks(tasksData);
+
+        setSummary(summaryData || null);
         setZones(zonesData);
-        setStats(statsData);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
         setToast({ show: true, message: 'Failed to load dashboard data', type: 'error' });
@@ -104,33 +134,32 @@ export const AdminDashboard = () => {
   };
 
   // Calculate real stats from loaded data
-  const reportStats = reports.length > 0 ? {
-    total: reports.length,
-    submitted: reports.filter((r) => r.status === 'SUBMITTED').length,
-    approved: reports.filter((r) => r.status === 'APPROVED').length,
-    inProgress: reports.filter((r) => r.status === 'IN_PROGRESS').length,
-    completed: reports.filter((r) => r.status === 'COMPLETED').length,
-    declined: reports.filter((r) => r.status === 'DECLINED').length,
-  } : { total: 0, submitted: 0, approved: 0, inProgress: 0, completed: 0, declined: 0 };
+  const reportStats = {
+    total: Number(summary?.report_stats?.total || 0),
+    submitted: Number(summary?.report_stats?.submitted || 0),
+    approved: Number(summary?.report_stats?.approved || 0),
+    inProgress: Number(summary?.report_stats?.in_progress || 0),
+    completed: Number(summary?.report_stats?.completed || 0),
+    declined: Number(summary?.report_stats?.declined || 0),
+  };
 
-  const taskStats = tasks.length > 0 ? {
-    total: tasks.length,
-    available: tasks.filter((t) => t.status === 'APPROVED').length,
-    inProgress: tasks.filter((t) => t.status === 'IN_PROGRESS').length,
-    completed: tasks.filter((t) => t.status === 'COMPLETED').length,
-    totalRewards: tasks.reduce((sum, t) => sum + t.reward, 0),
-    paidOut: tasks.filter((t) => t.status === 'COMPLETED').reduce(
-      (sum, t) => sum + t.reward,
-      0
-    ),
-  } : { total: 0, available: 0, inProgress: 0, completed: 0, totalRewards: 0, paidOut: 0 };
+  const taskStats = {
+    total: Number(summary?.task_stats?.total || 0),
+    available: Number(summary?.task_stats?.available || 0),
+    inProgress: Number(summary?.task_stats?.in_progress || 0),
+    completed: Number(summary?.task_stats?.completed || 0),
+    totalRewards: Number(summary?.task_stats?.total_rewards || 0),
+    paidOut: Number(summary?.task_stats?.paid_out || 0),
+  };
 
   // Reports by zone
-  const reportsByZone = zones.map((zone) => ({
-    name: zone.name,
-    reports: reports.filter((r) => r.zoneId === zone.id).length,
-    score: zone.cleanlinessScore,
-  }));
+  const reportsByZone = Array.isArray(summary?.reports_by_zone)
+    ? summary.reports_by_zone.map((zone) => ({
+        name: zone.zone_name,
+        reports: Number(zone.reports || 0),
+        score: Number(zone.cleanliness_score || 0),
+      }))
+    : [];
 
   // Status distribution for pie chart
   const statusDistribution = [
@@ -142,10 +171,20 @@ export const AdminDashboard = () => {
   ].filter((s) => s.value > 0);
 
   // Recent reports needing attention
-  const pendingReports = reports.filter((r) => r.status === 'SUBMITTED').slice(0, 5);
-  const criticalPendingReports = reports.filter(
-    (r) => r.status === 'SUBMITTED' && (r.severity === 'HIGH' || r.severity === 'CRITICAL')
-  ).length;
+  const pendingReports: Report[] = Array.isArray(summary?.pending_reports)
+    ? summary.pending_reports.map((item) => ({
+        id: item.id,
+        userId: '',
+        userName: item.user_name || '',
+        zoneId: item.zone_id,
+        zoneName: item.zone_name || 'Unknown Zone',
+        description: item.description || '',
+        severity: item.severity,
+        status: item.status,
+        timestamp: item.created_at,
+      }))
+    : [];
+  const criticalPendingReports = Number(summary?.report_stats?.critical_pending || 0);
   const averageCleanliness =
     zones.length > 0
       ? Math.round(zones.reduce((sum, zone) => sum + Number(zone.cleanlinessScore || 0), 0) / zones.length)
