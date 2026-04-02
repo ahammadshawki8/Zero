@@ -89,6 +89,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const lastNotificationFetchRef = useRef<number>(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
@@ -100,21 +101,27 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
   // Load notifications when component mounts
   useEffect(() => {
     if (!isSuperAdmin) {
-      loadNotifications();
+      loadNotifications(true);
     }
   }, []);
 
   // Refresh notification list when dropdown opens so users see latest updates.
   useEffect(() => {
     if (!isSuperAdmin && isNotificationOpen) {
-      loadNotifications();
+      loadNotifications(false);
     }
   }, [isNotificationOpen, isSuperAdmin]);
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (force = false) => {
     if (isSuperAdmin) {
       setNotifications([]);
       setIsNotificationOpen(false);
+      return;
+    }
+
+    const now = Date.now();
+    const minRefreshMs = 15000;
+    if (!force && now - lastNotificationFetchRef.current < minRefreshMs) {
       return;
     }
 
@@ -122,6 +129,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
       setIsLoadingNotifications(true);
       const response = await notificationsAPI.getNotifications();
       setNotifications(response.notifications || []);
+      lastNotificationFetchRef.current = Date.now();
     } catch (error) {
       console.error('Failed to load notifications:', error);
       // Don't show error to user, just keep empty notifications

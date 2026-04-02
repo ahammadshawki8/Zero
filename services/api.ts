@@ -1013,8 +1013,19 @@ export const adminAPI = {
     return response.data;
   },
 
-  getPendingPayments: async () => {
-    const response = await apiClient('/admin/payments/pending');
+  getPendingPayments: async (params?: { limit?: number; offset?: number; cleaner_id?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.limit != null) query.set('limit', String(params.limit));
+    if (params?.offset != null) query.set('offset', String(params.offset));
+    if (params?.cleaner_id) query.set('cleaner_id', params.cleaner_id);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+
+    const response = await apiClient(`/admin/payments/pending${suffix}`);
+    return response.data;
+  },
+
+  getPendingPaymentDetails: async (transactionId: string) => {
+    const response = await apiClient(`/admin/payments/pending/${transactionId}`);
     return response.data;
   },
 

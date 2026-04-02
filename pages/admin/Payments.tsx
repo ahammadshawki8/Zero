@@ -71,6 +71,7 @@ export const AdminPayments = () => {
   const [fundHistory, setFundHistory] = useState<FundTransaction[]>([]);
   const [summary, setSummary] = useState<PaymentSummary>({});
   const [selectedPromise, setSelectedPromise] = useState<PendingPayment | null>(null);
+  const [isLoadingPromiseDetails, setIsLoadingPromiseDetails] = useState(false);
 
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [showTopUpConfirm, setShowTopUpConfirm] = useState(false);
@@ -105,7 +106,7 @@ export const AdminPayments = () => {
 
       // Load the payment screen in sequence to avoid bursty pool usage on Render.
       const paymentSummary = await adminAPI.getPaymentSummary();
-      const pendingData = await adminAPI.getPendingPayments();
+      const pendingData = await adminAPI.getPendingPayments({ limit: 15, offset: 0 });
       const fundHistoryData = await adminAPI.getFundTransactionHistory();
 
       setPending(Array.isArray(pendingData) ? pendingData : []);
@@ -197,6 +198,23 @@ export const AdminPayments = () => {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenPromiseReview = async (item: PendingPayment) => {
+    try {
+      setIsLoadingPromiseDetails(true);
+      setSelectedPromise(item);
+
+      const details = await adminAPI.getPendingPaymentDetails(item.id);
+      if (details) {
+        setSelectedPromise((prev) => ({ ...(prev || item), ...details }));
+      }
+    } catch (error) {
+      console.error('Failed to load payout details:', error);
+      setToast({ show: true, message: 'Failed to load payout details', type: 'error' });
+    } finally {
+      setIsLoadingPromiseDetails(false);
     }
   };
 
@@ -313,7 +331,7 @@ export const AdminPayments = () => {
                       </Badge>
                     </div>
                     <span className="text-lg font-bold text-green-700 dark:text-green-300 shrink-0">৳{Number(item.amount).toLocaleString()}</span>
-                    <Button className="whitespace-nowrap shrink-0" variant="outline" onClick={() => setSelectedPromise(item)}>
+                    <Button className="whitespace-nowrap shrink-0" variant="outline" onClick={() => handleOpenPromiseReview(item)}>
                       Review & Confirm
                     </Button>
                   </div>
@@ -448,6 +466,11 @@ export const AdminPayments = () => {
       >
         {selectedPromise && (
           <div className="space-y-4">
+            {isLoadingPromiseDetails && (
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-300">
+                Loading payout details...
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-700/40">
                 <p className="text-xs text-slate-500 dark:text-slate-400">Cleaner</p>
