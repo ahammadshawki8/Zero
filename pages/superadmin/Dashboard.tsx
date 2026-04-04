@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Button, Input, Toast } from '../../components/ui';
+import { Card, Button, Input, Modal, Toast } from '../../components/ui';
 import { PageLoader } from '../../components/ZeroLoader';
 import { adminAPI, superadminAPI } from '../../services/api';
 import { formatApiDateTime } from '../../utils/date';
@@ -36,6 +36,10 @@ export const SuperAdminDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isResettingPool, setIsResettingPool] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [armPhrase, setArmPhrase] = useState('');
+  const [terminateSessions, setTerminateSessions] = useState(true);
+  const [terminateCurrentUserOnly, setTerminateCurrentUserOnly] = useState(true);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({
     show: false,
     message: '',
@@ -96,18 +100,15 @@ export const SuperAdminDashboard: React.FC = () => {
   };
 
   const handleForceResetPool = async () => {
-    const confirmed = window.confirm(
-      'Force reset DB pool now? This can terminate active DB sessions and interrupt in-flight requests.'
-    );
-    if (!confirmed) return;
-
     setIsResettingPool(true);
     try {
       await adminAPI.forceResetDbPool({
-        terminate_sessions: true,
-        terminate_only_current_user: true,
+        terminate_sessions: terminateSessions,
+        terminate_only_current_user: terminateCurrentUserOnly,
       });
       setToast({ show: true, message: 'DB pool reset triggered successfully.', type: 'success' });
+      setShowResetModal(false);
+      setArmPhrase('');
       await loadData();
     } catch (error: any) {
       setToast({ show: true, message: error.message || 'Failed to reset DB pool', type: 'error' });
@@ -115,6 +116,8 @@ export const SuperAdminDashboard: React.FC = () => {
       setIsResettingPool(false);
     }
   };
+
+  const resetPhraseValid = armPhrase.trim().toUpperCase() === 'RESET DB POOL';
 
   if (isLoading) {
     return (
@@ -151,7 +154,7 @@ export const SuperAdminDashboard: React.FC = () => {
               variant="danger"
               size="sm"
               isLoading={isResettingPool}
-              onClick={handleForceResetPool}
+              onClick={() => setShowResetModal(true)}
             >
               Force Reset DB Pool
             </Button>
@@ -246,6 +249,81 @@ export const SuperAdminDashboard: React.FC = () => {
           )}
         </div>
       </Card>
+
+      <Modal
+        isOpen={showResetModal}
+        onClose={() => {
+          if (isResettingPool) return;
+          setShowResetModal(false);
+          setArmPhrase('');
+        }}
+        title="Arm and Execute DB Pool Reset"
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowResetModal(false);
+                setArmPhrase('');
+              }}
+              disabled={isResettingPool}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              isLoading={isResettingPool}
+              disabled={!resetPhraseValid || isResettingPool}
+              onClick={handleForceResetPool}
+            >
+              Execute Reset
+            </Button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50/70 dark:bg-red-900/10 p-3">
+            <p className="text-sm font-semibold text-red-700 dark:text-red-300">Danger Zone</p>
+            <p className="text-xs text-red-600 dark:text-red-300/90 mt-1">
+              This operation interrupts active DB activity and should be used only during severe pool spikes.
+            </p>
+          </div>
+
+          <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={terminateSessions}
+              onChange={(e) => setTerminateSessions(e.target.checked)}
+              disabled={isResettingPool}
+            />
+            <span>Terminate DB sessions before recreating pool</span>
+          </label>
+
+          <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={terminateCurrentUserOnly}
+              onChange={(e) => setTerminateCurrentUserOnly(e.target.checked)}
+              disabled={isResettingPool || !terminateSessions}
+            />
+            <span>Terminate only sessions owned by current DB user (safer)</span>
+          </label>
+
+          <div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+              To arm execution, type exactly: <span className="font-semibold text-slate-700 dark:text-slate-200">RESET DB POOL</span>
+            </p>
+            <Input
+              value={armPhrase}
+              onChange={(e) => setArmPhrase(e.target.value)}
+              placeholder="Type: RESET DB POOL"
+              disabled={isResettingPool}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
