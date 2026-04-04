@@ -12,6 +12,7 @@ import {
   CleanupReview
 } from '../types';
 import API_CONFIG from '../config/api';
+import { ALL_BADGES } from '../constants';
 
 // API Configuration
 const API_BASE_URL = API_CONFIG.BASE_URL;
@@ -124,6 +125,55 @@ const mapCitizenLeaderboardEntry = (entry: any): LeaderboardEntry => ({
   approvedReports: Number(entry?.approved_reports || 0),
   badges: Number(entry?.badges_count || 0),
 });
+
+const BADGE_ICON_BY_ID: Record<string, string> = ALL_BADGES.reduce((acc, badge) => {
+  acc[badge.id] = badge.icon;
+  return acc;
+}, {} as Record<string, string>);
+
+const hasEmoji = (value: string): boolean => {
+  if (!value) return false;
+  return /[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/u.test(value);
+};
+
+const decodePossiblyMojibake = (value: string): string => {
+  if (!value) return value;
+  if (hasEmoji(value)) return value;
+
+  // Common mojibake signatures for UTF-8 text interpreted as latin-1/windows-1252.
+  const looksMojibake = /[\u00C2\u00C3\u00E2]|\u00F0\u0178/u.test(value);
+  if (!looksMojibake) return value;
+
+  try {
+    const bytes = new Uint8Array(Array.from(value).map((ch) => ch.charCodeAt(0) & 0xff));
+    const decoded = new TextDecoder('utf-8').decode(bytes);
+    return hasEmoji(decoded) ? decoded : value;
+  } catch {
+    return value;
+  }
+};
+
+const mapBadge = (item: any): Badge => {
+  const badgeId = (item?.id || '') as Badge['id'];
+  const apiIcon = decodePossiblyMojibake(String(item?.icon || ''));
+  const fallbackIcon = BADGE_ICON_BY_ID[String(badgeId)] || '';
+
+  return {
+    id: badgeId,
+    name: item?.name || 'Badge',
+    description: item?.description || '',
+    icon: apiIcon || fallbackIcon,
+    earnedAt: item?.earned_at || item?.earnedAt || undefined,
+  };
+};
+
+const normalizeCitizenProfile = (data: any): CitizenProfile => {
+  const badges = Array.isArray(data?.badges) ? data.badges.map(mapBadge) : [];
+  return {
+    ...data,
+    badges,
+  } as CitizenProfile;
+};
 
 const mapCleanerLeaderboardEntry = (entry: any): LeaderboardEntry => ({
   rank: Number(entry?.rank || 0),
@@ -466,7 +516,7 @@ export const authAPI = {
 export const citizenAPI = {
   getProfile: async (): Promise<CitizenProfile> => {
     const response = await apiClient('/citizen/profile');
-    return response.data;
+    return normalizeCitizenProfile(response.data);
   },
 
   updateProfile: async (profileData: Partial<CitizenProfile>) => {
@@ -582,7 +632,8 @@ export const citizenAPI = {
 
   getBadges: async (): Promise<Badge[]> => {
     const response = await apiClient('/citizen/badges');
-    return response.data; // Backend returns {success: true, data: [...]}
+    const badges = Array.isArray(response.data) ? response.data : [];
+    return badges.map(mapBadge);
   },
 
   getPointsHistory: async () => {

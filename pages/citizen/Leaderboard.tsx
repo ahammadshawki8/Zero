@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Toast } from '../../components/ui';
+import { PageLoader } from '../../components/ZeroLoader';
 import { citizenAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { Trophy, Medal, Award, Leaf, TrendingUp, Target, Flame, Crown } from 'lucide-react';
@@ -73,12 +74,7 @@ export const Leaderboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading leaderboard...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading leaderboard..." className="min-h-[400px]" />
     );
   }
 

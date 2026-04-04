@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { adminAPI } from '../../services/api';
 import { Badge, Button, Card, ConfirmModal, Input, Modal, Select, Toast } from '../../components/ui';
+import { InlineLoader, PageLoader } from '../../components/ZeroLoader';
 import { formatApiDateTime } from '../../utils/date';
 import {
   Banknote,
@@ -220,12 +221,7 @@ export const AdminPayments = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-300">Loading payment center...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading payment center..." className="min-h-[400px]" />
     );
   }
 
@@ -468,7 +464,7 @@ export const AdminPayments = () => {
           <div className="space-y-4">
             {isLoadingPromiseDetails && (
               <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-sm text-blue-700 dark:text-blue-300">
-                Loading payout details...
+                <InlineLoader label="Loading payout details..." size="sm" className="py-1" />
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

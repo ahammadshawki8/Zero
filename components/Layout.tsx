@@ -26,6 +26,7 @@ import {
   Moon,
 } from 'lucide-react';
 import { Logo } from './Logo';
+import { InlineLoader } from './ZeroLoader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { sharedAPI, notificationsAPI } from '../services/api';
@@ -354,8 +355,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, userRole, onLogout }) 
                       <div className="overflow-y-auto flex-1">
                         {isLoadingNotifications ? (
                           <div className="p-6 sm:p-8 text-center text-slate-500 dark:text-slate-400">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
-                            <p className="text-xs sm:text-sm">Loading notifications...</p>
+                            <InlineLoader label="Loading notifications..." size="sm" className="py-1" />
                           </div>
                         ) : notifications.length === 0 ? (
                           <div className="p-6 sm:p-8 text-center text-slate-500 dark:text-slate-400">

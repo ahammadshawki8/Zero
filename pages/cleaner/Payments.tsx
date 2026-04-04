@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Badge, Button, Card, ConfirmModal, Input, Modal, Select, Toast } from '../../components/ui';
+import { PageLoader } from '../../components/ZeroLoader';
 import { cleanerAPI } from '../../services/api';
 import { ArrowDownToLine, Banknote, Clock, Wallet } from 'lucide-react';
 import { formatApiDateTime } from '../../utils/date';
@@ -124,12 +125,7 @@ export const CleanerPayments = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-300">Loading payments...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading payments..." className="min-h-[400px]" />
     );
   }
 

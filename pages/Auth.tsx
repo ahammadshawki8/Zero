@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { UserRole } from '../types';
 import { Button, Input, Select, Card, Toast } from '../components/ui';
 import { Logo } from '../components/Logo';
+import { ButtonLoader } from '../components/ZeroLoader';
 import { useAuth } from '../contexts/AuthContext';
 
 export const AuthPage: React.FC = () => {
@@ -179,7 +180,7 @@ export const AuthPage: React.FC = () => {
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="inline-block w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <ButtonLoader />
                     {isRegistering ? 'Creating...' : 'Signing In...'}
                   </span>
                 ) : (

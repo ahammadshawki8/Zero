@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Badge, Modal, Card, Toast } from '../../components/ui';
+import { PageLoader } from '../../components/ZeroLoader';
 import { citizenAPI } from '../../services/api';
 import {
   Leaf,
@@ -353,12 +354,7 @@ export const MyReports = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading your reports...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading your reports..." className="min-h-[400px]" />
     );
   }
 

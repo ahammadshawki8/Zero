@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Card, Button, Input, Modal, Toast } from '../../components/ui';
+import { PageLoader } from '../../components/ZeroLoader';
 import { adminAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -218,12 +219,7 @@ export const AdminProfile = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading profile...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading profile..." className="min-h-[400px]" />
     );
   }
 

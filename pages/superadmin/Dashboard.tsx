@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Toast } from '../../components/ui';
+import { PageLoader } from '../../components/ZeroLoader';
 import { superadminAPI } from '../../services/api';
 import { formatApiDateTime } from '../../utils/date';
 
@@ -95,12 +96,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        <div className="text-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-green-600 mx-auto mb-3" />
-          <p className="text-slate-600">Loading superadmin dashboard...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading superadmin dashboard..." className="min-h-[400px]" />
     );
   }
 

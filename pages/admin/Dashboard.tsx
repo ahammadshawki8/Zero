@@ -28,6 +28,7 @@ import {
   Activity,
   ShieldAlert,
 } from 'lucide-react';
+import { PageLoader } from '../../components/ZeroLoader';
 import { Card, Badge, Button, Modal, Input, Select, Toast } from '../../components/ui';
 import { adminAPI, sharedAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -210,12 +211,7 @@ export const AdminDashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading dashboard...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading dashboard..." />
     );
   }
 

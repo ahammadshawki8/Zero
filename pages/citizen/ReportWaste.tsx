@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Card, Toast } from '../../components/ui';
+import { InlineLoader } from '../../components/ZeroLoader';
 import { Zone, LatLng, WasteAnalysis } from '../../types';
 import { ZoneDisplayMap } from '../../components/ZoneMap';
 import { findZoneForPoint } from '../../utils/geo';
@@ -437,8 +438,7 @@ export const ReportWaste = () => {
 
             {isLoadingZones ? (
               <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600 mx-auto mb-2"></div>
-                <p className="text-sm text-slate-500">Loading zones...</p>
+                <InlineLoader label="Loading zones..." size="sm" className="py-1" />
               </div>
             ) : (
               <ZoneDisplayMap

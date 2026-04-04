@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Input, Toast } from '../../components/ui';
+import { PageLoader } from '../../components/ZeroLoader';
 import { Zone, LatLng } from '../../types';
 import { ZoneDisplayMap } from '../../components/ZoneMap';
 import { ZoneEditor } from '../../components/ZoneEditor';
@@ -123,12 +124,7 @@ export const AdminZones = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading zones...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading zones..." />
     );
   }
 

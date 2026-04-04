@@ -1,22 +1,18 @@
 import React from 'react';
 import {
   ArrowRight,
+  Brain,
+  Camera,
+  CheckCircle2,
+  ChevronRight,
   Leaf,
-  MapPin,
-  Users,
-  Zap,
+  Moon,
+  ShieldCheck,
   Sparkles,
   Sun,
-  Moon,
   Trophy,
-  Star,
-  Shield,
-  CheckCircle,
-  TrendingUp,
-  Camera,
-  Brain,
-  Banknote,
-  Award,
+  Wallet,
+  Zap,
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,362 +21,332 @@ interface LandingProps {
   onGetStarted: () => void;
 }
 
+const marqueeItems = [
+  'AI Waste Analysis',
+  'Zone-Based Mapping',
+  'Gamification System',
+  'Real Rewards',
+  'Citizen Watchdog',
+  'Analytics Dashboard',
+];
+
 export const LandingPage: React.FC<LandingProps> = ({ onGetStarted }) => {
   const { theme, toggleTheme } = useTheme();
+  const [spot, setSpot] = React.useState({ x: 50, y: 20 });
 
-  const handleExploreFeatures = () => {
-    const featuresSection = document.getElementById('features');
-    if (!featuresSection) return;
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setSpot({ x, y });
+  };
 
-    // Keep section title visible below fixed nav when scrolling.
-    const navOffset = 96;
-    const top = featuresSection.getBoundingClientRect().top + window.scrollY - navOffset;
+  const goToFeatures = () => {
+    const section = document.getElementById('feature-grid');
+    if (!section) return;
+    const top = section.getBoundingClientRect().top + window.scrollY - 88;
     window.scrollTo({ top, behavior: 'smooth' });
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 transition-colors duration-200">
-      {/* Nav */}
-      <nav className="fixed top-0 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-50 border-b border-slate-100 dark:border-slate-800 safe-area">
-        <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4 flex items-center justify-between">
-          <Logo size="sm" className="sm:hidden" />
-          <Logo size="md" className="hidden sm:flex" />
-          <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
+    <div
+      onMouseMove={onMove}
+      className="min-h-screen bg-[#f4f7f3] text-slate-900 dark:bg-[#07130f] dark:text-slate-100 overflow-x-hidden"
+      style={{ fontFamily: 'Space Grotesk, Inter, sans-serif' }}
+    >
+      <style>{`
+        @keyframes drift {
+          0% { transform: translateY(0px) translateX(0px); }
+          50% { transform: translateY(-10px) translateX(8px); }
+          100% { transform: translateY(0px) translateX(0px); }
+        }
+        @keyframes pulseSoft {
+          0% { opacity: .35; }
+          50% { opacity: .75; }
+          100% { opacity: .35; }
+        }
+        .drift {
+          animation: drift 6s ease-in-out infinite;
+        }
+        .pulse-soft {
+          animation: pulseSoft 5s ease-in-out infinite;
+        }
+      `}</style>
+
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div
+          className="absolute inset-0 opacity-80 dark:opacity-70"
+          style={{
+            background: `radial-gradient(circle at ${spot.x}% ${spot.y}%, rgba(37,161,103,.28), rgba(9,22,17,0) 38%)`,
+          }}
+        />
+        <div className="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-[#9ee8bd]/40 blur-3xl pulse-soft" />
+        <div className="absolute top-40 -right-20 w-96 h-96 rounded-full bg-[#8bc7ff]/30 blur-3xl drift" />
+      </div>
+
+      <nav className="fixed top-0 inset-x-0 z-40 border-b border-slate-200/50 dark:border-emerald-900/50 backdrop-blur-xl bg-[#f4f7f3]/75 dark:bg-[#07130f]/70">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
+          <Logo size="md" />
+          <div className="flex items-center gap-2 md:gap-3">
             <button
               onClick={toggleTheme}
-              className="p-1.5 sm:p-2 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors active:opacity-70 touch-manipulation"
+              className="w-10 h-10 rounded-full border border-slate-300/70 dark:border-emerald-800/70 text-slate-600 dark:text-emerald-200 hover:bg-white/70 dark:hover:bg-emerald-900/40 transition-colors"
             >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              {theme === 'dark' ? <Sun size={17} className="mx-auto" /> : <Moon size={17} className="mx-auto" />}
             </button>
             <button
               onClick={onGetStarted}
-              className="px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 bg-green-600 text-white text-xs sm:text-sm md:text-base font-medium rounded-full hover:bg-green-700 active:bg-green-800 active:scale-95 transition-all hover:shadow-lg hover:shadow-green-200 dark:hover:shadow-green-900 touch-manipulation"
+              className="px-5 md:px-6 py-2.5 rounded-full text-sm md:text-base font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-cyan-500 transition-all shadow-lg shadow-emerald-300/35 dark:shadow-emerald-800/40"
             >
-              Get Started
+              Launch Zero
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="pt-20 sm:pt-24 md:pt-32 pb-8 sm:pb-12 md:pb-20 px-3 sm:px-6 md:px-8 overflow-hidden relative">
-        {/* Background decoration */}
-        <div className="absolute top-20 left-0 w-96 h-96 bg-green-100 dark:bg-green-900/20 rounded-full blur-3xl opacity-50" />
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-100 dark:bg-emerald-900/20 rounded-full blur-3xl opacity-50" />
-        
-        <div className="max-w-6xl mx-auto relative">
-          <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 text-green-700 dark:text-green-400 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6 animate-pulse">
-                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                AI-Powered Smart Waste Management
-              </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 dark:text-white leading-[1.1] tracking-tight mb-3 sm:mb-4 md:mb-6">
-                Clean cities
-                <span className="block bg-gradient-to-r from-green-600 to-emerald-500 bg-clip-text text-transparent">
-                  start from zero.
-                </span>
-              </h1>
-              <p className="text-sm sm:text-base md:text-lg leading-relaxed text-slate-600 dark:text-slate-300 mb-4 sm:mb-6 md:mb-8 max-w-xl">
-                Report waste, earn rewards, track cleanups in real-time. Join the movement making Dhaka cleaner, one report at a time.
-              </p>
-              <div className="flex flex-col xs:flex-row gap-3 sm:gap-4">
-                <button
-                  onClick={onGetStarted}
-                  className="group inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold text-sm sm:text-base rounded-full hover:shadow-xl hover:shadow-green-200 dark:hover:shadow-green-900/50 active:scale-95 transition-all active:shadow-md touch-manipulation hover:-translate-y-0.5"
-                >
-                  Start Reporting Now
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExploreFeatures}
-                  className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-medium text-sm sm:text-base rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 transition-all touch-manipulation"
-                >
-                  Explore Features
-                </button>
-              </div>
-
-              {/* Stats */}
-              <div className="mt-6 sm:mt-8 md:mt-12 grid grid-cols-3 gap-2 sm:gap-4 md:gap-6">
-                <StatCard value="2.4k+" label="Reports Filed" icon={<Camera size={16} />} />
-                <StatCard value="89%" label="Resolved" icon={<CheckCircle size={16} />} />
-                <StatCard value="৳45k+" label="Rewards Paid" icon={<Banknote size={16} />} />
-              </div>
+      <section className="relative z-10 pt-28 md:pt-36 pb-14 md:pb-24 px-4 md:px-8">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-[1.15fr_.85fr] gap-10 md:gap-14 items-start">
+          <div>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-300/60 dark:border-emerald-700/60 bg-white/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs md:text-sm mb-5">
+              <Sparkles size={14} /> AI-Powered Smart Waste Management
             </div>
 
-            {/* Right - App Preview */}
-            <div className="relative hidden lg:block">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-400 to-emerald-500 rounded-3xl blur-2xl opacity-20 animate-pulse" />
-                <img
-                  src="https://plus.unsplash.com/premium_photo-1726704235738-c5d97caeb391?w=600&h=700&auto=format&fit=crop&q=80"
-                  alt="Clean environment"
-                  className="relative rounded-3xl shadow-2xl border-8 border-white dark:border-slate-800 w-full h-[520px] object-cover"
-                />
-              </div>
-              
-              {/* Floating cards */}
-              <div className="absolute -left-8 top-1/4 bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 animate-bounce" style={{ animationDuration: '3s' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/50 rounded-xl flex items-center justify-center">
-                    <Leaf className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-slate-900 dark:text-white">+25 Points!</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">Report Approved</div>
-                  </div>
-                </div>
-              </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black tracking-tight leading-[.96]">
+              Clean cities
+              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500">
+                start from zero.
+              </span>
+            </h1>
 
-              <div className="absolute -right-4 bottom-1/4 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-5 py-3 rounded-2xl shadow-xl animate-bounce" style={{ animationDuration: '4s' }}>
-                <div className="flex items-center gap-2">
-                  <Trophy className="w-5 h-5" />
-                  <span className="font-bold">#5 on Leaderboard</span>
-                </div>
-              </div>
-
-              <div className="absolute left-1/4 -bottom-4 bg-white dark:bg-slate-800 p-3 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 animate-bounce" style={{ animationDuration: '2.5s' }}>
-                <div className="flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-indigo-500" />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">AI: 85% Plastic Detected</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* User Types */}
-      <section className="py-8 sm:py-12 md:py-20 px-3 sm:px-6 md:px-8 bg-slate-50 dark:bg-slate-800/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-4">
-              One Platform, Three Roles
-            </h2>
-            <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-slate-400 max-w-2xl mx-auto px-2">
-              Whether you're a citizen, cleaner, or administrator - Zero has everything you need.
+            <p className="mt-5 md:mt-7 max-w-2xl text-slate-600 dark:text-slate-300 text-base md:text-lg leading-relaxed">
+              Report waste, earn rewards, track cleanups in real-time. Join the movement making Dhaka cleaner, one report at a time.
             </p>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <RoleCard
-              icon={<Users className="w-8 h-8" />}
-              title="Citizens"
-              color="green"
-              features={['Report waste with photos', 'Earn Green Points', 'Track cleanup progress', 'Rate cleaner performance', 'Climb the leaderboard']}
-            />
-            <RoleCard
-              icon={<Zap className="w-8 h-8" />}
-              title="Cleaners"
-              color="blue"
-              features={['Browse available tasks', 'Earn real money (BDT)', 'Compete for top earnings', 'Build your reputation', 'Get AI-verified completions']}
-            />
-            <RoleCard
-              icon={<Shield className="w-8 h-8" />}
-              title="Administrators"
-              color="purple"
-              features={['Approve citizen reports', 'Create & assign tasks', 'Manage zone boundaries', 'Track city-wide analytics', 'Set task rewards']}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-8 sm:py-12 md:py-20 px-3 sm:px-6 md:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-full text-xs sm:text-sm font-medium mb-3 sm:mb-4">
-              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              Powerful Features
+            <div className="mt-8 flex flex-col sm:flex-row gap-3 sm:items-center">
+              <button
+                onClick={onGetStarted}
+                className="group px-7 py-3.5 rounded-2xl bg-slate-950 text-white dark:bg-emerald-500 dark:text-slate-950 font-bold text-sm md:text-base inline-flex items-center justify-center gap-2 hover:-translate-y-0.5 transition-transform"
+              >
+                Start Reporting Now
+                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              <button
+                onClick={goToFeatures}
+                className="px-7 py-3.5 rounded-2xl border border-slate-300 dark:border-emerald-800 font-semibold text-sm md:text-base text-slate-700 dark:text-slate-200 hover:bg-white/70 dark:hover:bg-emerald-950/40 transition-colors"
+              >
+                Explore Features
+              </button>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-4">
-              Everything you need for cleaner cities
-            </h2>
+
+            <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <PulseMetric value="2.4K+" label="Reports Filed" icon={<Camera size={14} />} />
+              <PulseMetric value="89%" label="Resolved" icon={<CheckCircle2 size={14} />} />
+              <PulseMetric value="45K+" label="Rewards Paid" icon={<Wallet size={14} />} />
+              <PulseMetric value="18m" label="Avg response" icon={<Zap size={14} />} />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
-            <FeatureCard
-              icon={<Brain className="w-6 h-6" />}
-              title="AI Waste Analysis"
-              description="Upload a photo and our AI detects waste composition, estimates volume, and suggests cleanup priority."
-              gradient="from-indigo-500 to-purple-500"
-            />
-            <FeatureCard
-              icon={<MapPin className="w-6 h-6" />}
-              title="Zone-Based Mapping"
-              description="Interactive maps with polygon zones. Click to report, see zone cleanliness scores in real-time."
-              gradient="from-blue-500 to-cyan-500"
-            />
-            <FeatureCard
-              icon={<Trophy className="w-6 h-6" />}
-              title="Gamification System"
-              description="Earn Green Points, unlock badges, climb leaderboards. Make waste reporting fun and rewarding."
-              gradient="from-amber-500 to-orange-500"
-            />
-            <FeatureCard
-              icon={<Banknote className="w-6 h-6" />}
-              title="Real Rewards"
-              description="Cleaners earn real money (BDT) for completing tasks. Transparent payment tracking."
-              gradient="from-green-500 to-emerald-500"
-            />
-            <FeatureCard
-              icon={<Star className="w-6 h-6" />}
-              title="Citizen Watchdog"
-              description="Review completed cleanups with before/after comparison. Hold cleaners accountable."
-              gradient="from-pink-500 to-rose-500"
-            />
-            <FeatureCard
-              icon={<TrendingUp className="w-6 h-6" />}
-              title="Analytics Dashboard"
-              description="Track reports by zone, monitor completion rates, view financial summaries all in one place."
-              gradient="from-slate-600 to-slate-800"
-            />
-          </div>
-        </div>
-      </section>
+          <div className="relative">
+            <div className="rounded-[2rem] border border-white/70 dark:border-emerald-900/70 bg-white/70 dark:bg-[#0b1c16]/75 backdrop-blur-xl shadow-2xl shadow-emerald-500/15 dark:shadow-emerald-950/60 p-4 md:p-5">
+              <img
+                src="https://plus.unsplash.com/premium_photo-1726704235738-c5d97caeb391?w=600&h=700&auto=format&fit=crop&q=80"
+                alt="Urban cleanup coordination"
+                className="h-[420px] w-full object-cover rounded-[1.45rem]"
+              />
 
-      {/* How it works */}
-      <section className="py-8 sm:py-12 md:py-20 px-3 sm:px-6 md:px-8 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-4">
-              How It Works
-            </h2>
-            <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-slate-400">Simple steps to a cleaner city</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <StepCard number="1" title="Spot Waste" description="See illegal dumping or overflowing bins in your area" icon={<Camera />} />
-            <StepCard number="2" title="Report It" description="Snap a photo, AI analyzes it, drop a pin on the map" icon={<MapPin />} />
-            <StepCard number="3" title="Task Created" description="Admin approves and creates a paid task for cleaners" icon={<CheckCircle />} />
-            <StepCard number="4" title="Get Rewarded" description="Cleaner completes, you review, everyone earns points" icon={<Award />} />
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-8 sm:py-12 md:py-20 px-3 sm:px-6 md:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative overflow-hidden bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600 rounded-2xl sm:rounded-3xl p-6 sm:p-10 md:p-16 text-center">
-            <div className="absolute inset-0 opacity-10 bg-white" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-            <div className="relative">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-6">
-                <Leaf className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <GlassStat title="AI Confidence" value="92%" note="Image parsed in 2.1s" />
+                <GlassStat title="Verification" value="3 checks" note="Citizen + admin + AI" />
               </div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-2 sm:mb-4">
-                Ready to make a difference?
-              </h2>
-              <p className="text-green-100 mb-4 sm:mb-8 max-w-lg mx-auto text-sm sm:text-base md:text-lg px-2">
+            </div>
+
+            <div className="absolute -left-6 top-16 hidden md:block drift">
+              <FloatingChip label="AI severity: HIGH" tone="teal" />
+            </div>
+            <div className="absolute -right-4 bottom-24 hidden md:block drift" style={{ animationDelay: '1.4s' }}>
+              <FloatingChip label="Reward released" tone="amber" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative z-10 border-y border-slate-200/60 dark:border-emerald-900/50 bg-white/60 dark:bg-[#081712]/60 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto py-4 px-4 md:px-0">
+          <div className="flex flex-wrap justify-center gap-2.5 md:gap-3">
+            {marqueeItems.map((item) => (
+              <span
+                key={item}
+                className="inline-flex items-center px-3.5 py-2 rounded-full border border-slate-200 dark:border-emerald-900/70 bg-white/80 dark:bg-emerald-950/35 text-sm md:text-[15px] font-semibold text-slate-700 dark:text-emerald-200"
+              >
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="feature-grid" className="relative z-10 px-4 md:px-8 py-14 md:py-24">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8 md:mb-12">
+            <p className="text-xs md:text-sm uppercase tracking-[0.25em] text-emerald-600 dark:text-emerald-300 font-bold">Powerful Features</p>
+            <h2 className="mt-2 text-3xl md:text-5xl font-black leading-tight">Everything you need for cleaner cities</h2>
+          </div>
+
+          <div className="grid md:grid-cols-12 gap-4 md:gap-5">
+            <BentoCard
+              className="md:col-span-7"
+              icon={<Brain size={20} />}
+              title="AI Waste Analysis"
+              text="Upload a photo and our AI detects waste composition, estimates volume, and suggests cleanup priority."
+              accent="from-cyan-500 to-teal-500"
+            />
+            <BentoCard
+              className="md:col-span-5"
+              icon={<ShieldCheck size={20} />}
+              title="Zone-Based Mapping"
+              text="Interactive maps with polygon zones. Click to report, see zone cleanliness scores in real-time."
+              accent="from-emerald-500 to-lime-500"
+            />
+            <BentoCard
+              className="md:col-span-4"
+              icon={<Trophy size={20} />}
+              title="Gamification System"
+              text="Earn Green Points, unlock badges, climb leaderboards. Make waste reporting fun and rewarding."
+              accent="from-amber-500 to-orange-500"
+            />
+            <BentoCard
+              className="md:col-span-8"
+              icon={<Wallet size={20} />}
+              title="Real Rewards"
+              text="Cleaners earn real money (BDT) for completing tasks. Transparent payment tracking."
+              accent="from-slate-800 to-slate-600"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="relative z-10 px-4 md:px-8 pb-14 md:pb-24">
+        <div className="max-w-7xl mx-auto rounded-[2rem] md:rounded-[2.5rem] overflow-hidden border border-emerald-200/60 dark:border-emerald-900/60 bg-gradient-to-br from-[#082116] via-[#0a2d1e] to-[#0f4330]">
+          <div className="p-8 md:p-14 lg:p-20 grid lg:grid-cols-[1.1fr_.9fr] gap-10 items-center">
+            <div>
+              <p className="inline-flex items-center gap-2 text-xs md:text-sm font-semibold text-emerald-200/90">
+                <Sparkles size={14} /> Join the movement
+              </p>
+              <h3 className="mt-3 text-3xl md:text-5xl font-black text-white leading-tight">
+                Ready to make a
+                <span className="block text-emerald-300">difference?</span>
+              </h3>
+              <p className="mt-4 text-emerald-100/90 max-w-xl text-sm md:text-base">
                 Join thousands of citizens already making Dhaka cleaner. Start earning points today!
               </p>
               <button
                 onClick={onGetStarted}
-                className="group inline-flex items-center gap-2 sm:gap-3 px-6 sm:px-10 py-3 sm:py-5 bg-white text-green-700 font-bold text-sm sm:text-base md:text-lg rounded-full hover:bg-green-50 active:bg-slate-100 active:scale-95 transition-all hover:shadow-2xl hover:-translate-y-1 touch-manipulation"
+                className="mt-7 group px-7 py-3.5 rounded-2xl bg-white text-emerald-800 font-bold text-sm md:text-base inline-flex items-center gap-2 hover:bg-emerald-50 transition-colors"
               >
                 Get Started Free
-                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
+                <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
               </button>
+            </div>
+
+            <div className="grid gap-3">
+              <Testimonial label="Citizen" quote="I report in 20 seconds and can see cleanup proof in one place." />
+              <Testimonial label="Cleaner" quote="Payment and reputation are finally tied to real completed work." />
+              <Testimonial label="Admin" quote="I can approve, verify, and release payouts without chaos." />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Team */}
-      <section className="py-8 sm:py-12 md:py-20 px-3 sm:px-6 md:px-8 bg-slate-50 dark:bg-slate-800/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-8 sm:mb-12">
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-4">Meet the Team</h2>
-            <p className="text-xs sm:text-sm md:text-base text-slate-600 dark:text-slate-400">The developers behind Zero Waste Management</p>
+      <section className="relative z-10 px-4 md:px-8 pb-14 md:pb-20">
+        <div className="max-w-7xl mx-auto rounded-[2rem] border border-slate-200/70 dark:border-emerald-900/70 bg-white/70 dark:bg-[#0a1c15]/55 backdrop-blur-sm p-6 md:p-10">
+          <div className="text-center mb-8 md:mb-10">
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white mb-2">Meet the Team</h2>
+            <p className="text-slate-600 dark:text-slate-400">The developers behind Zero Waste Management</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 md:gap-8 max-w-2xl mx-auto">
-            <DeveloperCard
-              name="Ahammad Shawki"
-              role="2305067"
-              avatar="/team/ahammad-shawki.jpg"
-              fallbackAvatar="https://i.pravatar.cc/150?img=12"
-            />
-            <DeveloperCard
-              name="SM Abu Fayeem"
-              role="2305070"
-              avatar="/team/sm-abu-fayeem.jpg"
-              fallbackAvatar="https://i.pravatar.cc/150?img=11"
-            />
+          <div className="grid md:grid-cols-2 gap-6 md:gap-8 max-w-3xl mx-auto">
+            <DeveloperCard name="Ahammad Shawki" role="2305067" avatar="/team/ahammad-shawki.jpg" />
+            <DeveloperCard name="SM Abu Fayeem" role="2305070" avatar="/team/sm-abu-fayeem.jpg" />
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-6 sm:py-8 md:py-12 px-3 sm:px-6 md:px-8 border-t border-slate-200 dark:border-slate-800">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 text-center sm:text-left">
+      <footer className="relative z-10 px-4 md:px-8 pb-10 md:pb-12">
+        <div className="max-w-7xl mx-auto pt-6 border-t border-slate-300/60 dark:border-emerald-900/70 flex flex-col md:flex-row items-center justify-between gap-3">
           <Logo size="sm" />
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">© 2026 Zero Waste Management. Building cleaner cities for Bangladesh.</p>
+          <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 text-center md:text-right">
+            2026 Zero Waste Management. Building cleaner cities for Bangladesh.
+          </p>
         </div>
       </footer>
     </div>
   );
 };
 
-// Component helpers
-const StatCard = ({ value, label, icon }: { value: string; label: string; icon: React.ReactNode }) => (
-  <div className="text-center p-2.5 sm:p-3 md:p-4 bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl md:rounded-2xl border border-slate-100 dark:border-slate-700 hover:shadow-md transition-shadow">
-    <div className="flex items-center justify-center gap-1 sm:gap-1.5 text-green-600 dark:text-green-400 mb-1 sm:mb-1.5">{icon}</div>
-    <div className="text-base sm:text-lg md:text-2xl font-bold text-slate-900 dark:text-white">{value}</div>
-    <div className="text-[9px] sm:text-xs text-slate-500 dark:text-slate-400">{label}</div>
+const PulseMetric = ({ value, label, icon }: { value: string; label: string; icon: React.ReactNode }) => (
+  <div className="rounded-2xl border border-slate-200/70 dark:border-emerald-900/70 bg-white/70 dark:bg-emerald-950/35 px-3 py-3 md:px-4 md:py-3.5 backdrop-blur-sm">
+    <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-300">{icon}</div>
+    <div className="mt-1 text-lg md:text-2xl font-black">{value}</div>
+    <div className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400">{label}</div>
   </div>
 );
 
-const RoleCard = ({ icon, title, color, features }: { icon: React.ReactNode; title: string; color: string; features: string[] }) => {
-  const colors: Record<string, string> = {
-    green: 'from-green-500 to-emerald-500 bg-green-100 dark:bg-green-900/30 text-green-600',
-    blue: 'from-blue-500 to-cyan-500 bg-blue-100 dark:bg-blue-900/30 text-blue-600',
-    purple: 'from-purple-500 to-indigo-500 bg-purple-100 dark:bg-purple-900/30 text-purple-600',
-  };
+const GlassStat = ({ title, value, note }: { title: string; value: string; note: string }) => (
+  <div className="rounded-2xl border border-slate-200/70 dark:border-emerald-800/70 bg-white/75 dark:bg-[#0f2a1f]/70 p-3">
+    <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-emerald-200/70">{title}</p>
+    <p className="text-xl font-black mt-0.5 text-slate-900 dark:text-emerald-100">{value}</p>
+    <p className="text-xs text-slate-500 dark:text-emerald-200/70">{note}</p>
+  </div>
+);
+
+const FloatingChip = ({ label, tone }: { label: string; tone: 'teal' | 'amber' }) => {
+  const toneClass = tone === 'teal'
+    ? 'bg-teal-500/90 text-white shadow-teal-500/30'
+    : 'bg-amber-400/90 text-slate-900 shadow-amber-500/30';
+
   return (
-    <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 md:p-8 rounded-xl sm:rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-700 hover:shadow-xl transition-all hover:-translate-y-1 touch-manipulation">
-      <div className={`w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 rounded-lg sm:rounded-xl md:rounded-2xl flex items-center justify-center mb-3 sm:mb-4 md:mb-6 ${colors[color].split(' ').slice(2).join(' ')}`}>{icon}</div>
-      <h3 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 md:mb-4">{title}</h3>
-      <ul className="space-y-1.5 sm:space-y-2 md:space-y-3">
-        {features.map((f, i) => (
-          <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-            <CheckCircle size={14} className="text-green-500 flex-shrink-0 mt-0.5" /> <span>{f}</span>
-          </li>
-        ))}
-      </ul>
+    <div className={`px-4 py-2 rounded-xl text-xs font-bold shadow-xl ${toneClass}`}>
+      {label}
     </div>
   );
 };
 
-const FeatureCard = ({ icon, title, description, gradient }: { icon: React.ReactNode; title: string; description: string; gradient: string }) => (
-  <div className="group bg-white dark:bg-slate-800 p-3.5 sm:p-4 md:p-6 rounded-lg sm:rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-xl transition-all hover:-translate-y-1 touch-manipulation active:scale-95">
-    <div className={`w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-lg md:rounded-xl bg-gradient-to-br ${gradient} text-white flex items-center justify-center mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform`}>{icon}</div>
-    <h3 className="font-bold text-slate-900 dark:text-white mb-1 sm:mb-1.5 text-xs sm:text-sm md:text-base">{title}</h3>
-    <p className="text-slate-600 dark:text-slate-400 text-[11px] sm:text-xs md:text-sm leading-relaxed">{description}</p>
+const BentoCard = ({
+  className,
+  icon,
+  title,
+  text,
+  accent,
+}: {
+  className: string;
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+  accent: string;
+}) => (
+  <article className={`${className} rounded-3xl p-5 md:p-7 border border-slate-200/70 dark:border-emerald-900/70 bg-white/80 dark:bg-[#0a1c15]/60 backdrop-blur-sm group hover:-translate-y-0.5 transition-transform`}>
+    <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${accent} text-white flex items-center justify-center`}>
+      {icon}
+    </div>
+    <h3 className="mt-4 text-xl md:text-2xl font-black leading-tight">{title}</h3>
+    <p className="mt-2 text-sm md:text-base text-slate-600 dark:text-slate-300">{text}</p>
+  </article>
+);
+
+const Testimonial = ({ label, quote }: { label: string; quote: string }) => (
+  <div className="rounded-2xl border border-emerald-300/20 bg-white/10 p-4 md:p-5 text-emerald-50 backdrop-blur-sm">
+    <p className="text-[11px] md:text-xs uppercase tracking-[0.2em] text-emerald-200/80">{label}</p>
+    <p className="mt-2 text-sm md:text-base leading-relaxed">{quote}</p>
   </div>
 );
 
-const StepCard = ({ number, title, description, icon }: { number: string; title: string; description: string; icon: React.ReactNode }) => (
-  <div className="text-center">
-    <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-white dark:bg-slate-800 rounded-lg sm:rounded-xl md:rounded-2xl shadow-lg flex items-center justify-center mx-auto mb-2 sm:mb-3 md:mb-4 text-green-600 dark:text-green-400">{icon}</div>
-    <div className="text-xl sm:text-2xl md:text-4xl font-bold text-green-200 dark:text-green-800 mb-1 sm:mb-1.5 md:mb-2">{number}</div>
-    <h3 className="font-bold text-slate-900 dark:text-white mb-1 sm:mb-1.5 text-xs sm:text-sm md:text-base">{title}</h3>
-    <p className="text-slate-600 dark:text-slate-400 text-[10px] sm:text-xs md:text-sm">{description}</p>
-  </div>
-);
-
-const DeveloperCard = ({ name, role, avatar, fallbackAvatar }: { name: string; role: string; avatar: string; fallbackAvatar?: string }) => (
-  <div className="bg-white dark:bg-slate-800 p-4 sm:p-5 md:p-8 rounded-lg sm:rounded-xl md:rounded-2xl border border-slate-200 dark:border-slate-700 text-center hover:shadow-xl transition-all touch-manipulation">
+const DeveloperCard = ({ name, role, avatar }: { name: string; role: string; avatar: string }) => (
+  <div className="rounded-2xl border border-slate-200/70 dark:border-emerald-900/70 bg-white/85 dark:bg-[#0c231a]/70 p-5 md:p-7 text-center shadow-sm">
     <img
       src={avatar}
       alt={name}
-      onError={(e) => {
-        if (fallbackAvatar && e.currentTarget.src !== fallbackAvatar) {
-          e.currentTarget.src = fallbackAvatar;
-        }
-      }}
-      className="w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-full mx-auto mb-2 sm:mb-3 md:mb-4 border-4 border-green-100 dark:border-green-900 object-cover"
+      className="w-20 h-20 md:w-24 md:h-24 rounded-full mx-auto mb-4 border-4 border-emerald-100 dark:border-emerald-900 object-cover"
     />
-    <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base md:text-lg">{name}</h3>
-    <p className="text-green-600 dark:text-green-400 text-xs sm:text-sm">{role}</p>
+    <h3 className="font-black text-slate-900 dark:text-white text-base md:text-lg">{name}</h3>
+    <p className="text-emerald-600 dark:text-emerald-300 text-sm">{role}</p>
   </div>
 );

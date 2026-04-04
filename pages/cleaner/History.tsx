@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Button, Modal, Toast, Badge } from '../../components/ui';
+import { InlineLoader, PageLoader } from '../../components/ZeroLoader';
 import { Eye, TrendingUp, Star, CheckCircle, MessageSquare, Clock } from 'lucide-react';
 import { Task } from '../../types';
 import { AIAnalysisDisplay, CleanupComparisonDisplay } from '../../components/AIAnalysisDisplay';
@@ -102,12 +103,7 @@ export const CleanerHistory = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading history...</p>
-        </div>
-      </div>
+      <PageLoader label="Loading history..." />
     );
   }
 
@@ -264,7 +260,7 @@ export const CleanerHistory = () => {
         footer={<Button onClick={() => setSelectedTask(null)}>Close</Button>}
       >
         {isLoadingTaskDetails ? (
-          <div className="py-8 text-center text-slate-500">Loading task details...</div>
+          <InlineLoader label="Loading task details..." className="py-8" />
         ) : selectedTask && (
           <div className="space-y-4">
             {(() => {
