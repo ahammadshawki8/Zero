@@ -239,7 +239,7 @@ export const AdminDashboard = () => {
               </div>
               <Button
                 onClick={() => navigate('/admin/reports')}
-                className="bg-white text-slate-900 hover:bg-slate-100 w-full sm:w-auto"
+                className="!bg-amber-300 !text-slate-950 hover:!bg-amber-200 !border !border-amber-100 w-full sm:w-auto"
               >
                 Review Reports <ArrowRight size={16} className="ml-2" />
               </Button>

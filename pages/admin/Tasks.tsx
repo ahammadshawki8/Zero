@@ -21,6 +21,7 @@ import { formatApiDate, formatApiDateTime, parseApiDate } from '../../utils/date
 export const AdminTasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -158,6 +159,20 @@ export const AdminTasks = () => {
       setToast({ show: true, message: 'Failed to delete task', type: 'error' });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleViewTask = async (task: Task) => {
+    setIsLoadingDetails(true);
+    try {
+      const detailedTask = await adminAPI.getTaskDetails(task.id);
+      setSelectedTask(detailedTask);
+    } catch (error) {
+      console.error('Failed to load task details:', error);
+      setSelectedTask(task);
+      setToast({ show: true, message: 'Could not load full task details', type: 'warning' });
+    } finally {
+      setIsLoadingDetails(false);
     }
   };
 
@@ -309,7 +324,7 @@ export const AdminTasks = () => {
                       </td>
                       <td className="px-4 py-4 text-right">
                         <div className="flex gap-1 justify-end">
-                          <Button size="sm" variant="outline" onClick={() => setSelectedTask(task)}>
+                          <Button size="sm" variant="outline" onClick={() => handleViewTask(task)}>
                             <Eye size={14} className="mr-1" /> View
                           </Button>
                           {task.status === 'APPROVED' && (
@@ -341,7 +356,7 @@ export const AdminTasks = () => {
                 <div
                   key={task.id}
                   className="p-4 bg-white rounded-xl border border-slate-200 cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedTask(task)}
+                  onClick={() => handleViewTask(task)}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div>
@@ -396,7 +411,9 @@ export const AdminTasks = () => {
           </div>
         }
       >
-        {selectedTask && (
+        {isLoadingDetails ? (
+          <div className="py-8 text-center text-slate-600">Loading task details...</div>
+        ) : selectedTask && (
           <div className="space-y-4">
             {/* Status Banner */}
             <div

@@ -889,6 +889,11 @@ export const adminAPI = {
     return tasks.map(mapAdminTask);
   },
 
+  getTaskDetails: async (taskId: string): Promise<Task> => {
+    const response = await apiClient(`/admin/tasks/${taskId}`);
+    return mapAdminTask(response?.data || { id: taskId });
+  },
+
   createTask: async (taskData: {
     description: string;
     zoneId: string;
