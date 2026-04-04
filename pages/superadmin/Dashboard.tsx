@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card, Button, Input, Toast } from '../../components/ui';
 import { PageLoader } from '../../components/ZeroLoader';
-import { superadminAPI } from '../../services/api';
+import { adminAPI, superadminAPI } from '../../services/api';
 import { formatApiDateTime } from '../../utils/date';
 
 type SuperAdminUser = {
@@ -35,6 +35,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isResettingPool, setIsResettingPool] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'warning' | 'info' }>({
     show: false,
     message: '',
@@ -94,6 +95,27 @@ export const SuperAdminDashboard: React.FC = () => {
     }
   };
 
+  const handleForceResetPool = async () => {
+    const confirmed = window.confirm(
+      'Force reset DB pool now? This can terminate active DB sessions and interrupt in-flight requests.'
+    );
+    if (!confirmed) return;
+
+    setIsResettingPool(true);
+    try {
+      await adminAPI.forceResetDbPool({
+        terminate_sessions: true,
+        terminate_only_current_user: true,
+      });
+      setToast({ show: true, message: 'DB pool reset triggered successfully.', type: 'success' });
+      await loadData();
+    } catch (error: any) {
+      setToast({ show: true, message: error.message || 'Failed to reset DB pool', type: 'error' });
+    } finally {
+      setIsResettingPool(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <PageLoader label="Loading superadmin dashboard..." className="min-h-[400px]" />
@@ -117,6 +139,23 @@ export const SuperAdminDashboard: React.FC = () => {
           <Metric label="Superadmins" value={stats?.total_superadmins || 0} />
           <Metric label="Blocked" value={stats?.blocked_or_inactive_users || 0} />
           <Metric label="Actions 24h" value={stats?.actions_last_24h || 0} />
+        </div>
+
+        <div className="mt-4 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50/80 dark:bg-red-900/10 p-4">
+          <p className="text-sm font-semibold text-red-700 dark:text-red-300">Emergency DB Controls</p>
+          <p className="mt-1 text-xs text-red-600/90 dark:text-red-300/90">
+            Use only during spike incidents when pool waiters are stuck.
+          </p>
+          <div className="mt-3">
+            <Button
+              variant="danger"
+              size="sm"
+              isLoading={isResettingPool}
+              onClick={handleForceResetPool}
+            >
+              Force Reset DB Pool
+            </Button>
+          </div>
         </div>
       </Card>
 

@@ -1125,6 +1125,21 @@ export const adminAPI = {
     });
     return response.data;
   },
+
+  forceResetDbPool: async (options?: {
+    terminate_sessions?: boolean;
+    terminate_only_current_user?: boolean;
+  }) => {
+    const response = await apiClient('/admin/debug/pool-reset', {
+      method: 'POST',
+      body: JSON.stringify({
+        confirm: 'RESET_DB_POOL',
+        terminate_sessions: Boolean(options?.terminate_sessions ?? true),
+        terminate_only_current_user: Boolean(options?.terminate_only_current_user ?? true),
+      }),
+    });
+    return response.data;
+  },
 };
 
 // AI Analysis API
