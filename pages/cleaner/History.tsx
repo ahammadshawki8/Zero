@@ -21,6 +21,7 @@ type EarningsTransaction = {
 
 export const CleanerHistory = () => {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isLoadingTaskDetails, setIsLoadingTaskDetails] = useState(false);
   const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
   const [paymentFilter, setPaymentFilter] = useState<'ALL' | 'PAID' | 'PENDING' | 'UNKNOWN'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,6 +63,20 @@ export const CleanerHistory = () => {
 
     loadData();
   }, []);
+
+  const openTaskDetails = async (task: Task) => {
+    setIsLoadingTaskDetails(true);
+    try {
+      const detailedTask = await cleanerAPI.getTaskDetails(task.id);
+      setSelectedTask({ ...task, ...detailedTask });
+    } catch (error) {
+      console.error('Failed to load detailed task data:', error);
+      setSelectedTask(task);
+      setToast({ show: true, message: 'Could not load full task details', type: 'error' });
+    } finally {
+      setIsLoadingTaskDetails(false);
+    }
+  };
 
   const getPaymentMeta = (task: Task): TaskPaymentMeta => {
     const meta = taskPayments[task.id];
@@ -194,7 +209,7 @@ export const CleanerHistory = () => {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        <Button size="sm" variant="outline" onClick={() => setSelectedTask(task)}>
+                        <Button size="sm" variant="outline" onClick={() => openTaskDetails(task)}>
                           <Eye size={14} className="mr-1" /> Details
                         </Button>
                       </td>
@@ -212,7 +227,7 @@ export const CleanerHistory = () => {
                 <div
                   key={task.id}
                   className="p-4 hover:bg-slate-50"
-                  onClick={() => setSelectedTask(task)}
+                  onClick={() => openTaskDetails(task)}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div>
@@ -243,12 +258,14 @@ export const CleanerHistory = () => {
 
       {/* Task Detail Modal */}
       <Modal
-        isOpen={!!selectedTask}
+        isOpen={!!selectedTask || isLoadingTaskDetails}
         onClose={() => setSelectedTask(null)}
         title={`Task Details: ${selectedTask?.id}`}
         footer={<Button onClick={() => setSelectedTask(null)}>Close</Button>}
       >
-        {selectedTask && (
+        {isLoadingTaskDetails ? (
+          <div className="py-8 text-center text-slate-500">Loading task details...</div>
+        ) : selectedTask && (
           <div className="space-y-4">
             {(() => {
               const payment = getPaymentMeta(selectedTask);
@@ -278,23 +295,35 @@ export const CleanerHistory = () => {
             })()}
 
             {/* Before/After Images */}
-            {selectedTask.reportId && (
+            {selectedTask.reportId && (selectedTask.beforeImageUrl || selectedTask.evidenceImageUrl) && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs text-slate-500 mb-1">Before</p>
-                  <img
-                    src={selectedTask.beforeImageUrl || '/placeholder-image.jpg'}
-                    alt="Before"
-                    className="w-full h-32 object-cover rounded-lg border border-slate-200"
-                  />
+                  {selectedTask.beforeImageUrl ? (
+                    <img
+                      src={selectedTask.beforeImageUrl}
+                      alt="Before"
+                      className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                    />
+                  ) : (
+                    <div className="w-full h-32 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-xs text-slate-400">
+                      Before image unavailable
+                    </div>
+                  )}
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 mb-1">After (Your Work)</p>
-                  <img
-                    src={selectedTask.evidenceImageUrl || '/placeholder-image.jpg'}
-                    alt="After"
-                    className="w-full h-32 object-cover rounded-lg border-2 border-green-400"
-                  />
+                  {selectedTask.evidenceImageUrl ? (
+                    <img
+                      src={selectedTask.evidenceImageUrl}
+                      alt="After"
+                      className="w-full h-32 object-cover rounded-lg border-2 border-green-400"
+                    />
+                  ) : (
+                    <div className="w-full h-32 rounded-lg border-2 border-green-200 bg-green-50 flex items-center justify-center text-xs text-green-500">
+                      After image unavailable
+                    </div>
+                  )}
                 </div>
               </div>
             )}

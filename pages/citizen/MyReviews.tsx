@@ -72,7 +72,24 @@ export const MyReviews = () => {
       setShowReviewModal(openForWrite);
     } catch (error) {
       console.error('Failed to load report details:', error);
-      setToast({ show: true, message: 'Failed to load review details', type: 'error' });
+
+      // Fallback: still allow write-review using summary payload.
+      if (openForWrite) {
+        if (hasCitizenReview(report)) {
+          setToast({ show: true, message: 'You already reviewed this cleanup', type: 'info' });
+          return;
+        }
+        setSelectedReport(report);
+        setReviewRating(0);
+        setReviewComment('');
+        setShowReviewModal(true);
+        setToast({ show: true, message: 'Opened review with limited details (network busy)', type: 'warning' });
+        return;
+      }
+
+      setSelectedReport(report);
+      setShowReviewModal(false);
+      setToast({ show: true, message: 'Showing limited details (network busy)', type: 'warning' });
     }
   };
 
