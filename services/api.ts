@@ -364,10 +364,17 @@ const mapCleanerTaskDetails = (payload: any, fallbackTaskId: string): Task => {
       ? {
           description: report?.description || 'Task analysis',
           severity: (task?.priority || 'MEDIUM') as Task['priority'],
-          wasteComposition: [],
+          wasteComposition: Array.isArray(ai?.waste_composition)
+            ? ai.waste_composition.map((w: any) => ({
+                type: w?.waste_type || 'Unknown',
+                percentage: Number(w?.percentage || 0),
+                recyclable: Boolean(w?.recyclable),
+              }))
+            : [],
           estimatedVolume: ai?.estimated_volume || 'N/A',
           environmentalImpact: (ai?.environmental_impact || 'MODERATE') as WasteAnalysis['environmentalImpact'],
-          healthHazard: false,
+          healthHazard: Boolean(ai?.health_hazard),
+          hazardDetails: ai?.hazard_details || undefined,
           recommendedAction: ai?.recommended_action || 'Follow standard cleanup protocol',
           estimatedCleanupTime: ai?.estimated_cleanup_time || 'N/A',
           specialEquipmentNeeded: Array.isArray(ai?.special_equipment) ? ai.special_equipment : [],

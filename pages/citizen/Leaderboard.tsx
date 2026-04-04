@@ -3,11 +3,37 @@ import { Card, Toast } from '../../components/ui';
 import { PageLoader } from '../../components/ZeroLoader';
 import { citizenAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { Trophy, Medal, Award, Leaf, TrendingUp, Target, Flame, Crown } from 'lucide-react';
-import { LeaderboardEntry, CitizenProfile } from '../../types';
+import { Trophy, Medal, Award, Leaf, TrendingUp, Target, Flame, Crown, Sprout, Globe2, MapPinned, Zap } from 'lucide-react';
+import { BadgeType, LeaderboardEntry, CitizenProfile } from '../../types';
 import { formatApiDate } from '../../utils/date';
 
 type TimeFilter = 'week' | 'month' | 'all';
+
+const normalizeBadgeId = (badgeId?: string): BadgeType | null => {
+  const value = String(badgeId || '').toUpperCase();
+  const validIds: BadgeType[] = ['FIRST_REPORT', 'ECO_WARRIOR', 'ZONE_CHAMPION', 'STREAK_7', 'STREAK_30', 'TOP_REPORTER'];
+  return validIds.includes(value as BadgeType) ? (value as BadgeType) : null;
+};
+
+const getBadgeIcon = (badgeId?: string) => {
+  const normalized = normalizeBadgeId(badgeId);
+  switch (normalized) {
+    case 'FIRST_REPORT':
+      return <Sprout size={22} className="text-emerald-600 dark:text-emerald-300" />;
+    case 'ECO_WARRIOR':
+      return <Globe2 size={22} className="text-teal-600 dark:text-teal-300" />;
+    case 'ZONE_CHAMPION':
+      return <MapPinned size={22} className="text-blue-600 dark:text-blue-300" />;
+    case 'STREAK_7':
+      return <Flame size={22} className="text-orange-600 dark:text-orange-300" />;
+    case 'STREAK_30':
+      return <Zap size={22} className="text-amber-600 dark:text-amber-300" />;
+    case 'TOP_REPORTER':
+      return <Crown size={22} className="text-yellow-600 dark:text-yellow-300" />;
+    default:
+      return <Award size={22} className="text-slate-600 dark:text-slate-300" />;
+  }
+};
 
 export const Leaderboard = () => {
   const { user } = useAuth();
@@ -144,7 +170,11 @@ export const Leaderboard = () => {
                 key={badge.id}
                 className="p-2 sm:p-3 rounded-xl text-center bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700 active:scale-95 transition-transform touch-manipulation"
               >
-                <div className="text-2xl sm:text-3xl mb-2">{badge.icon}</div>
+                <div className="mb-2 flex justify-center">
+                  <div className="w-10 h-10 rounded-full bg-white/80 dark:bg-slate-800/70 border border-green-200 dark:border-green-700 flex items-center justify-center">
+                    {getBadgeIcon(badge.id)}
+                  </div>
+                </div>
                 <div className="text-[10px] sm:text-xs md:text-sm font-medium text-green-800 dark:text-green-300">{badge.name}</div>
                 <div className="text-[8px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{badge.description}</div>
                 {badge.earnedAt && (
